@@ -46,10 +46,10 @@ export const HomePage = ({ onNavigate }: HomePageProps) => {
           className="absolute bottom-4 left-4 right-4"
         >
           <p className="font-arabic text-xl text-primary-foreground text-center leading-relaxed mb-1">
-            ۞ تَوْبَة ۞
+            ۞ اِسْتِقَامَة ۞
           </p>
           <h1 className="text-lg font-bold text-primary-foreground text-center">
-            Tawbah
+            Istiqamah
           </h1>
           <p className="text-xs text-primary-foreground/80 text-center">
             Langkah Menuju Kebaikan

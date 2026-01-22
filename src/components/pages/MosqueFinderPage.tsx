@@ -1,7 +1,14 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Clock, Users, BookOpen, Phone, ExternalLink } from "lucide-react";
+import { MapPin, Navigation, Clock, BookOpen, Phone, ExternalLink, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+
+interface Location {
+  latitude: number;
+  longitude: number;
+  address: string;
+}
 
 const nearbyMosques = [
   {
@@ -13,6 +20,9 @@ const nearbyMosques = [
     facilities: ["Wudhu", "Parkir", "AC"],
     hasKajian: true,
     kajianTime: "Ba'da Maghrib",
+    phone: "+6221-1234567",
+    lat: -6.2088,
+    lng: 106.8456,
   },
   {
     id: "2",
@@ -23,6 +33,9 @@ const nearbyMosques = [
     facilities: ["Wudhu", "Parkir", "AC", "Mushola Wanita"],
     hasKajian: true,
     kajianTime: "Setiap Ahad, 08:00",
+    phone: "+6221-2345678",
+    lat: -6.2188,
+    lng: 106.8556,
   },
   {
     id: "3",
@@ -32,6 +45,9 @@ const nearbyMosques = [
     nextPrayer: "Dzuhur - 12:10",
     facilities: ["Wudhu", "Parkir"],
     hasKajian: false,
+    phone: "+6221-3456789",
+    lat: -6.2288,
+    lng: 106.8656,
   },
   {
     id: "4",
@@ -42,6 +58,9 @@ const nearbyMosques = [
     facilities: ["Wudhu", "Parkir", "AC", "TPA"],
     hasKajian: true,
     kajianTime: "Ba'da Isya",
+    phone: "+6221-4567890",
+    lat: -6.2388,
+    lng: 106.8756,
   },
 ];
 
@@ -54,6 +73,83 @@ const prayerTimes = [
 ];
 
 export const MosqueFinderPage = () => {
+  const [location, setLocation] = useState<Location | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  const requestLocation = () => {
+    setIsLoadingLocation(true);
+    setLocationError(null);
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation tidak didukung oleh browser Anda");
+      setIsLoadingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          address: "Lokasi Anda Saat Ini",
+        });
+        setIsLoadingLocation(false);
+      },
+      (error) => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setLocationError("Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan browser.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setLocationError("Informasi lokasi tidak tersedia.");
+            break;
+          case error.TIMEOUT:
+            setLocationError("Permintaan lokasi timeout.");
+            break;
+          default:
+            setLocationError("Terjadi kesalahan saat mendapatkan lokasi.");
+        }
+        setIsLoadingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
+  const openGoogleMapsRoute = (mosque: typeof nearbyMosques[0]) => {
+    let url: string;
+    
+    if (location) {
+      // Use current location as origin
+      url = `https://www.google.com/maps/dir/${location.latitude},${location.longitude}/${mosque.lat},${mosque.lng}`;
+    } else {
+      // Just open the destination
+      url = `https://www.google.com/maps/search/?api=1&query=${mosque.lat},${mosque.lng}`;
+    }
+    
+    window.open(url, "_blank");
+  };
+
+  const openGoogleMapsSearch = () => {
+    let url: string;
+    
+    if (location) {
+      url = `https://www.google.com/maps/search/masjid/@${location.latitude},${location.longitude},15z`;
+    } else {
+      url = `https://www.google.com/maps/search/masjid+terdekat`;
+    }
+    
+    window.open(url, "_blank");
+  };
+
+  const callMosque = (phone: string) => {
+    window.open(`tel:${phone}`, "_self");
+  };
+
   return (
     <div className="min-h-screen pb-32 gradient-calm">
       {/* Header */}
@@ -74,15 +170,60 @@ export const MosqueFinderPage = () => {
         className="px-5 mb-4"
       >
         <Card variant="spiritual">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
-              <MapPin className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <p className="text-xs text-muted-foreground">Lokasimu saat ini</p>
-              <p className="text-sm font-medium text-foreground">Jl. Kebon Jeruk, Jakarta Barat</p>
-            </div>
-            <Button variant="ghost" size="sm">Ubah</Button>
+          <CardContent className="p-4">
+            {!location && !locationError ? (
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground mb-1">Izinkan Akses Lokasi</p>
+                  <p className="text-xs text-muted-foreground">
+                    Kami membutuhkan lokasi untuk menemukan masjid terdekat
+                  </p>
+                </div>
+                <Button 
+                  variant="spiritual" 
+                  size="sm" 
+                  onClick={requestLocation}
+                  disabled={isLoadingLocation}
+                >
+                  {isLoadingLocation ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Izinkan"
+                  )}
+                </Button>
+              </div>
+            ) : locationError ? (
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-destructive/20 flex items-center justify-center">
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground mb-1">Lokasi Tidak Tersedia</p>
+                  <p className="text-xs text-muted-foreground">{locationError}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={requestLocation}>
+                  Coba Lagi
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Lokasimu saat ini</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={requestLocation}>
+                  Perbarui
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -167,14 +308,27 @@ export const MosqueFinderPage = () => {
                   </div>
                   
                   <div className="flex gap-2">
-                    <Button variant="spiritual" size="sm" className="flex-1">
+                    <Button 
+                      variant="spiritual" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => openGoogleMapsRoute(mosque)}
+                    >
                       <Navigation className="h-3.5 w-3.5" />
-                      Navigasi
+                      Rute
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => callMosque(mosque.phone)}
+                    >
                       <Phone className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${mosque.lat},${mosque.lng}`, "_blank")}
+                    >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -185,7 +339,7 @@ export const MosqueFinderPage = () => {
         </div>
       </motion.div>
 
-      {/* Map Placeholder */}
+      {/* Map Placeholder - Open in Google Maps */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -196,9 +350,14 @@ export const MosqueFinderPage = () => {
           <div className="h-40 bg-secondary flex items-center justify-center">
             <div className="text-center">
               <MapPin className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Peta Interaktif</p>
-              <Button variant="spiritual" size="sm" className="mt-2">
-                Buka Peta
+              <p className="text-sm text-muted-foreground mb-2">Lihat Semua Masjid di Peta</p>
+              <Button 
+                variant="spiritual" 
+                size="sm"
+                onClick={openGoogleMapsSearch}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Buka Google Maps
               </Button>
             </div>
           </div>
