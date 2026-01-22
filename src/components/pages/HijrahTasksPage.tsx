@@ -1,8 +1,9 @@
-import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Circle, Plus, Calendar, TrendingUp, Target } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CheckCircle2, Circle, Plus, Calendar, TrendingUp, X, Edit3, BookOpen } from "lucide-react";
 import { useState } from "react";
 
 interface Task {
@@ -10,6 +11,7 @@ interface Task {
   title: string;
   completed: boolean;
   category: "ibadah" | "akhlak" | "ilmu" | "hijrah";
+  isCustom?: boolean;
 }
 
 const initialTasks: Task[] = [
@@ -36,14 +38,40 @@ const categoryLabels = {
   hijrah: "Hijrah",
 };
 
-export const HijrahTasksPage = () => {
+interface HijrahTasksPageProps {
+  onOpenReflection?: () => void;
+}
+
+export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskCategory, setNewTaskCategory] = useState<Task["category"]>("ibadah");
 
   const toggleTask = (taskId: string) => {
     setTasks(tasks.map(task =>
       task.id === taskId ? { ...task, completed: !task.completed } : task
     ));
+  };
+
+  const deleteTask = (taskId: string) => {
+    setTasks(tasks.filter(task => task.id !== taskId));
+  };
+
+  const addTask = () => {
+    if (newTaskTitle.trim()) {
+      const newTask: Task = {
+        id: Date.now().toString(),
+        title: newTaskTitle.trim(),
+        completed: false,
+        category: newTaskCategory,
+        isCustom: true,
+      };
+      setTasks([...tasks, newTask]);
+      setNewTaskTitle("");
+      setIsAddingTask(false);
+    }
   };
 
   const filteredTasks = activeFilter === "all"
@@ -76,7 +104,7 @@ export const HijrahTasksPage = () => {
             <h1 className="text-2xl font-bold text-foreground">Target Hijrah</h1>
             <p className="text-sm text-muted-foreground">Catat perjalanan perbaikan dirimu</p>
           </div>
-          <Button variant="spiritual" size="icon">
+          <Button variant="spiritual" size="icon" onClick={() => setIsAddingTask(true)}>
             <Plus className="h-5 w-5" />
           </Button>
         </div>
@@ -135,6 +163,57 @@ export const HijrahTasksPage = () => {
         </Card>
       </motion.div>
 
+      {/* Add Task Form */}
+      <AnimatePresence>
+        {isAddingTask && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-5 mb-4"
+          >
+            <Card variant="elevated">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-foreground">Tambah Target Baru</h3>
+                  <Button variant="ghost" size="iconSm" onClick={() => setIsAddingTask(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Contoh: Shalat tahajud setiap malam"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="mb-3"
+                  autoFocus
+                />
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {Object.entries(categoryLabels).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      variant={newTaskCategory === key ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setNewTaskCategory(key as Task["category"])}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setIsAddingTask(false)}>
+                    Batal
+                  </Button>
+                  <Button variant="spiritual" className="flex-1" onClick={addTask} disabled={!newTaskTitle.trim()}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Tambah
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Category Filter */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -171,39 +250,54 @@ export const HijrahTasksPage = () => {
         className="px-5"
       >
         <div className="space-y-2">
-          {filteredTasks.map((task, index) => (
-            <motion.div
-              key={task.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 + index * 0.05 }}
-            >
-              <Card
-                variant="default"
-                className={`transition-all cursor-pointer ${task.completed ? "opacity-60" : ""}`}
-                onClick={() => toggleTask(task.id)}
+          <AnimatePresence>
+            {filteredTasks.map((task, index) => (
+              <motion.div
+                key={task.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ delay: 0.5 + index * 0.05 }}
               >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <motion.div
-                    whileTap={{ scale: 0.9 }}
-                    className="flex-shrink-0"
-                  >
-                    {task.completed ? (
-                      <CheckCircle2 className="h-6 w-6 text-primary" />
-                    ) : (
-                      <Circle className="h-6 w-6 text-muted-foreground" />
+                <Card
+                  variant="default"
+                  className={`transition-all ${task.completed ? "opacity-60" : ""}`}
+                >
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <motion.div
+                      whileTap={{ scale: 0.9 }}
+                      className="flex-shrink-0 cursor-pointer"
+                      onClick={() => toggleTask(task.id)}
+                    >
+                      {task.completed ? (
+                        <CheckCircle2 className="h-6 w-6 text-primary" />
+                      ) : (
+                        <Circle className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </motion.div>
+                    <span 
+                      className={`flex-1 text-sm cursor-pointer ${task.completed ? "line-through text-muted-foreground" : "text-foreground"}`}
+                      onClick={() => toggleTask(task.id)}
+                    >
+                      {task.title}
+                    </span>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${categoryColors[task.category].bg} ${categoryColors[task.category].text}`}>
+                      {categoryLabels[task.category]}
+                    </span>
+                    {task.isCustom && (
+                      <Button 
+                        variant="ghost" 
+                        size="iconSm" 
+                        onClick={() => deleteTask(task.id)}
+                      >
+                        <X className="h-4 w-4 text-muted-foreground" />
+                      </Button>
                     )}
-                  </motion.div>
-                  <span className={`flex-1 text-sm ${task.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                    {task.title}
-                  </span>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${categoryColors[task.category].bg} ${categoryColors[task.category].text}`}>
-                    {categoryLabels[task.category]}
-                  </span>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </motion.div>
 
@@ -214,7 +308,11 @@ export const HijrahTasksPage = () => {
         transition={{ delay: 0.8 }}
         className="px-5 mt-6"
       >
-        <Card variant="hope">
+        <Card 
+          variant="hope" 
+          className="cursor-pointer hover:shadow-glow transition-all"
+          onClick={onOpenReflection}
+        >
           <CardContent className="p-4 flex items-center gap-4">
             <div className="h-12 w-12 rounded-xl bg-hope flex items-center justify-center text-2xl">
               📝
@@ -223,7 +321,10 @@ export const HijrahTasksPage = () => {
               <h3 className="text-sm font-semibold text-foreground">Refleksi Diri</h3>
               <p className="text-xs text-muted-foreground">Tulis perasaan dan pelajaran hari ini</p>
             </div>
-            <Button variant="ghost" size="sm">Tulis</Button>
+            <Button variant="ghost" size="sm">
+              <Edit3 className="h-4 w-4 mr-1" />
+              Tulis
+            </Button>
           </CardContent>
         </Card>
       </motion.div>

@@ -18,7 +18,7 @@ export const Header = ({ userName = "Hamba Allah" }: HeaderProps) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full gradient-hero flex items-center justify-center shadow-glow">
-              <span className="text-primary-foreground font-arabic text-lg">ت</span>
+              <span className="text-primary-foreground font-arabic text-lg">إ</span>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Assalamu'alaikum,</p>
