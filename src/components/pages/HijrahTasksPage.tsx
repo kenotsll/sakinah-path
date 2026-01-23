@@ -49,10 +49,15 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<Task["category"]>("ibadah");
 
+  // Auto-sort: completed tasks go to bottom, incomplete to top
   const toggleTask = (taskId: string) => {
-    setTasks(tasks.map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+    setTasks(prev => {
+      const updated = prev.map(task =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      );
+      // Sort: incomplete first, then completed
+      return updated.sort((a, b) => Number(a.completed) - Number(b.completed));
+    });
   };
 
   const deleteTask = (taskId: string) => {

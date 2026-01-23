@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
   userName?: string;
+  onOpenProfile?: () => void;
+  onOpenNotifications?: () => void;
 }
 
-export const Header = ({ userName = "Hamba Allah" }: HeaderProps) => {
+export const Header = ({ userName = "Hamba Allah", onOpenProfile, onOpenNotifications }: HeaderProps) => {
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}
@@ -27,11 +29,11 @@ export const Header = ({ userName = "Hamba Allah" }: HeaderProps) => {
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="iconSm" className="relative">
+            <Button variant="ghost" size="iconSm" className="relative" onClick={onOpenNotifications}>
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-accent animate-pulse" />
             </Button>
-            <Button variant="ghost" size="iconSm">
+            <Button variant="ghost" size="iconSm" onClick={onOpenProfile}>
               <User className="h-5 w-5" />
             </Button>
           </div>
