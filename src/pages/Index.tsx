@@ -8,17 +8,27 @@ import { ConsultationPage } from "@/components/pages/ConsultationPage";
 import { MosqueFinderPage } from "@/components/pages/MosqueFinderPage";
 import { ReflectionPage } from "@/components/pages/ReflectionPage";
 import { FAQPage } from "@/components/pages/FAQPage";
+import { ProfilePage } from "@/components/pages/ProfilePage";
+import { NotificationPanel } from "@/components/pages/NotificationPanel";
 import { AnimatePresence, motion } from "framer-motion";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [showReflection, setShowReflection] = useState(false);
   const [showFAQ, setShowFAQ] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const { permission, requestPermission } = useNotifications();
 
   const renderPage = () => {
     // Sub-pages that overlay the main navigation
+    if (showProfile) {
+      return <ProfilePage onBack={() => setShowProfile(false)} />;
+    }
     if (showReflection) {
-      return <ReflectionPage />;
+      return <ReflectionPage onBack={() => setShowReflection(false)} />;
     }
     if (showFAQ) {
       return <FAQPage onBack={() => setShowFAQ(false)} />;
@@ -26,7 +36,13 @@ const Index = () => {
 
     switch (activeTab) {
       case "home":
-        return <HomePage onNavigate={setActiveTab} />;
+        return (
+          <HomePage 
+            onNavigate={setActiveTab} 
+            onOpenProfile={() => setShowProfile(true)}
+            onOpenNotifications={() => setShowNotifications(true)}
+          />
+        );
       case "guide":
         return <TaubatGuidePage />;
       case "videos":
@@ -46,7 +62,13 @@ const Index = () => {
       case "mosque":
         return <MosqueFinderPage />;
       default:
-        return <HomePage onNavigate={setActiveTab} />;
+        return (
+          <HomePage 
+            onNavigate={setActiveTab}
+            onOpenProfile={() => setShowProfile(true)}
+            onOpenNotifications={() => setShowNotifications(true)}
+          />
+        );
     }
   };
 
@@ -54,8 +76,11 @@ const Index = () => {
   const handleTabChange = (tab: string) => {
     setShowReflection(false);
     setShowFAQ(false);
+    setShowProfile(false);
     setActiveTab(tab);
   };
+
+  const isSubPage = showReflection || showFAQ || showProfile;
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,7 +88,7 @@ const Index = () => {
       <div className="mx-auto max-w-lg min-h-screen relative">
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${activeTab}-${showReflection}-${showFAQ}`}
+            key={`${activeTab}-${showReflection}-${showFAQ}-${showProfile}`}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -74,9 +99,17 @@ const Index = () => {
         </AnimatePresence>
         
         {/* Hide bottom nav when in sub-pages */}
-        {!showReflection && !showFAQ && (
+        {!isSubPage && (
           <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
         )}
+
+        {/* Notification Panel */}
+        <NotificationPanel
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+          onRequestPermission={requestPermission}
+          hasPermission={permission === "granted"}
+        />
       </div>
     </div>
   );

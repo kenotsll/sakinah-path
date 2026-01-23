@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit3, Trash2, Calendar, X, Save, BookOpen } from "lucide-react";
+import { Plus, Edit3, Trash2, Calendar, X, Save, BookOpen, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 
 interface Reflection {
@@ -12,9 +12,13 @@ interface Reflection {
   timestamp: number;
 }
 
+interface ReflectionPageProps {
+  onBack?: () => void;
+}
+
 const MAX_CHARS = 500;
 
-export const ReflectionPage = () => {
+export const ReflectionPage = ({ onBack }: ReflectionPageProps) => {
   const [reflections, setReflections] = useState<Reflection[]>([
     {
       id: "1",
@@ -61,13 +65,18 @@ export const ReflectionPage = () => {
 
   return (
     <div className="min-h-screen pb-32 gradient-calm">
-      {/* Header */}
+      {/* Header with Back Button */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="px-5 pt-12 pb-4"
       >
         <div className="flex items-center gap-3 mb-2">
+          {onBack && (
+            <Button variant="ghost" size="iconSm" onClick={onBack}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div className="h-12 w-12 rounded-xl bg-hope flex items-center justify-center">
             <BookOpen className="h-6 w-6 text-hope-foreground" />
           </div>
