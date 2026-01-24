@@ -78,6 +78,7 @@ export const MosqueFinderPage = () => {
     if (!coords) return;
     setLocation({ latitude: coords.lat, longitude: coords.lng, address: "Lokasi Anda Saat Ini" });
     setLocationError(null);
+    setIsLoadingLocation(false);
 
     // Recompute distance + sort (simple client-side approximation).
     const next = [...nearbyMosques]
@@ -105,22 +106,18 @@ export const MosqueFinderPage = () => {
     }
 
     // Trigger hook's location refresh; UI here will update once coords changes.
-    try {
-      refetchPrayer();
-    } finally {
-      setTimeout(() => setIsLoadingLocation(false), 300);
-    }
+    refetchPrayer();
   };
 
   const openGoogleMapsRoute = (mosque: typeof nearbyMosques[0]) => {
     let url: string;
     
     if (location) {
-      // Use current location as origin
-      url = `https://www.google.com/maps/dir/${location.latitude},${location.longitude}/${mosque.lat},${mosque.lng}`;
+      // Use Google Maps Directions API format with origin and destination
+      url = `https://www.google.com/maps/dir/?api=1&origin=${location.latitude},${location.longitude}&destination=${mosque.lat},${mosque.lng}&travelmode=driving`;
     } else {
-      // Just open the destination
-      url = `https://www.google.com/maps/search/?api=1&query=${mosque.lat},${mosque.lng}`;
+      // Just open the destination with directions mode
+      url = `https://www.google.com/maps/dir/?api=1&destination=${mosque.lat},${mosque.lng}&travelmode=driving`;
     }
     
     window.open(url, "_blank");
