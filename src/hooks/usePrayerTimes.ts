@@ -13,6 +13,7 @@ interface PrayerTimesData {
   times: PrayerTimes | null;
   nextPrayer: { name: string; time: string; remaining: string } | null;
   location: { city: string; country: string } | null;
+  coords: { lat: number; lng: number } | null;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -146,21 +147,32 @@ export const usePrayerTimes = (): PrayerTimesData => {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        
+
+        // If we don't have coords yet, set them and fetch.
+        if (!coords) {
+          setCoords({ lat: latitude, lng: longitude });
+          fetchPrayerTimes(latitude, longitude);
+          return;
+        }
+
         // Only refetch if moved more than 1km
-        if (coords) {
-          const distance = calculateDistance(
-            coords.lat, coords.lng,
-            latitude, longitude
-          );
-          
-          if (distance > 1) {
-            setCoords({ lat: latitude, lng: longitude });
-            fetchPrayerTimes(latitude, longitude);
-          }
+        const distance = calculateDistance(
+          coords.lat,
+          coords.lng,
+          latitude,
+          longitude
+        );
+
+        if (distance > 1) {
+          setCoords({ lat: latitude, lng: longitude });
+          fetchPrayerTimes(latitude, longitude);
         }
       },
-      () => {},
+      (err) => {
+        // Keep silent (browser may spam errors). We'll rely on initial getCurrentPosition fallback.
+        // Still record for UI debugging.
+        setError(err?.message || "Gagal memantau lokasi");
+      },
       { enableHighAccuracy: true, maximumAge: 60000 }
     );
 
@@ -171,6 +183,7 @@ export const usePrayerTimes = (): PrayerTimesData => {
     times,
     nextPrayer: calculateNextPrayer(),
     location,
+    coords,
     loading,
     error,
     refetch: getLocation,

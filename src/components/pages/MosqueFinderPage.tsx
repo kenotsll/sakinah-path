@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Clock, BookOpen, Phone, ExternalLink, AlertCircle, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { usePrayerTimes } from "@/hooks/usePrayerTimes";
 
 interface Location {
   latitude: number;
@@ -64,18 +65,34 @@ const nearbyMosques = [
   },
 ];
 
-const prayerTimes = [
-  { name: "Subuh", time: "04:35", isNext: false },
-  { name: "Dzuhur", time: "12:05", isNext: true },
-  { name: "Ashar", time: "15:20", isNext: false },
-  { name: "Maghrib", time: "18:10", isNext: false },
-  { name: "Isya", time: "19:25", isNext: false },
-];
-
 export const MosqueFinderPage = () => {
   const [location, setLocation] = useState<Location | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  const { times, nextPrayer, coords, loading: prayerLoading, error: prayerError, refetch: refetchPrayer } = usePrayerTimes();
+
+  const [sortedMosques, setSortedMosques] = useState(nearbyMosques);
+
+  useEffect(() => {
+    if (!coords) return;
+    setLocation({ latitude: coords.lat, longitude: coords.lng, address: "Lokasi Anda Saat Ini" });
+    setLocationError(null);
+
+    // Recompute distance + sort (simple client-side approximation).
+    const next = [...nearbyMosques]
+      .map((m) => ({
+        ...m,
+        _distanceKm: calculateDistance(coords.lat, coords.lng, m.lat, m.lng),
+      }))
+      .sort((a, b) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0))
+      .map((m) => ({
+        ...m,
+        distance: `${(m._distanceKm ?? 0).toFixed(1)} km`,
+      }));
+
+    setSortedMosques(next as any);
+  }, [coords]);
 
   const requestLocation = () => {
     setIsLoadingLocation(true);
@@ -87,37 +104,12 @@ export const MosqueFinderPage = () => {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          address: "Lokasi Anda Saat Ini",
-        });
-        setIsLoadingLocation(false);
-      },
-      (error) => {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setLocationError("Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan browser.");
-            break;
-          case error.POSITION_UNAVAILABLE:
-            setLocationError("Informasi lokasi tidak tersedia.");
-            break;
-          case error.TIMEOUT:
-            setLocationError("Permintaan lokasi timeout.");
-            break;
-          default:
-            setLocationError("Terjadi kesalahan saat mendapatkan lokasi.");
-        }
-        setIsLoadingLocation(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
+    // Trigger hook's location refresh; UI here will update once coords changes.
+    try {
+      refetchPrayer();
+    } finally {
+      setTimeout(() => setIsLoadingLocation(false), 300);
+    }
   };
 
   const openGoogleMapsRoute = (mosque: typeof nearbyMosques[0]) => {
@@ -242,19 +234,45 @@ export const MosqueFinderPage = () => {
               <span className="text-sm font-semibold text-foreground">Jadwal Shalat Hari Ini</span>
             </div>
             <div className="flex justify-between">
-              {prayerTimes.map((prayer) => (
-                <div key={prayer.name} className={`text-center ${prayer.isNext ? "text-primary" : "text-muted-foreground"}`}>
-                  <p className="text-xs font-medium mb-1">{prayer.name}</p>
-                  <p className={`text-sm font-semibold ${prayer.isNext ? "text-primary" : "text-foreground"}`}>
-                    {prayer.time}
-                  </p>
-                  {prayer.isNext && (
-                    <span className="text-[10px] bg-primary-soft text-primary px-1.5 py-0.5 rounded-full mt-1 inline-block">
-                      Berikutnya
-                    </span>
-                  )}
-                </div>
-              ))}
+              {prayerLoading && (
+                <p className="text-xs text-muted-foreground">Memuat jadwal shalat...</p>
+              )}
+
+              {!prayerLoading && (prayerError || !times) && (
+                <p className="text-xs text-muted-foreground">
+                  {prayerError || "Jadwal shalat belum tersedia"}
+                </p>
+              )}
+
+              {!prayerLoading && times && (
+                <>
+                  {([
+                    { key: "Fajr", label: "Subuh" },
+                    { key: "Dhuhr", label: "Dzuhur" },
+                    { key: "Asr", label: "Ashar" },
+                    { key: "Maghrib", label: "Maghrib" },
+                    { key: "Isha", label: "Isya" },
+                  ] as const).map(({ key, label }) => {
+                    const isNext = nextPrayer?.name === label;
+                    return (
+                      <div
+                        key={key}
+                        className={`text-center ${isNext ? "text-primary" : "text-muted-foreground"}`}
+                      >
+                        <p className="text-xs font-medium mb-1">{label}</p>
+                        <p className={`text-sm font-semibold ${isNext ? "text-primary" : "text-foreground"}`}>
+                          {times[key]}
+                        </p>
+                        {isNext && (
+                          <span className="text-[10px] bg-primary-soft text-primary px-1.5 py-0.5 rounded-full mt-1 inline-block">
+                            Berikutnya
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -269,7 +287,7 @@ export const MosqueFinderPage = () => {
       >
         <h2 className="text-sm font-semibold text-foreground mb-3">Masjid Terdekat</h2>
         <div className="space-y-3">
-          {nearbyMosques.map((mosque, index) => (
+          {sortedMosques.map((mosque: any, index) => (
             <motion.div
               key={mosque.id}
               initial={{ opacity: 0, x: -20 }}
@@ -366,3 +384,16 @@ export const MosqueFinderPage = () => {
     </div>
   );
 };
+
+// Calculate distance between two coordinates in km
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
