@@ -8,6 +8,8 @@ import heroMosque from "@/assets/hero-mosque.jpg";
 
 interface HomePageProps {
   onNavigate: (tab: string) => void;
+  onOpenProfile?: () => void;
+  onOpenNotifications?: () => void;
 }
 
 export const HomePage = ({ onNavigate }: HomePageProps) => {
