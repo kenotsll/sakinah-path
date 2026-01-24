@@ -71,7 +71,7 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: Hom
 
       {/* Daily Progress */}
       <div className="mb-6">
-        <DailyProgress />
+        <DailyProgress onNavigate={onNavigate} />
       </div>
 
       {/* Video Recommendations */}

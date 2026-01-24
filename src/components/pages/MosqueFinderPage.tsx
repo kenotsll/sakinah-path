@@ -69,15 +69,21 @@ export const MosqueFinderPage = () => {
   const [location, setLocation] = useState<Location | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
 
   const { times, nextPrayer, coords, loading: prayerLoading, error: prayerError, refetch: refetchPrayer } = usePrayerTimes();
 
-  const [sortedMosques, setSortedMosques] = useState(nearbyMosques);
+  // Only show mosques if location is available
+  const [sortedMosques, setSortedMosques] = useState<typeof nearbyMosques>([]);
 
   useEffect(() => {
-    if (!coords) return;
+    if (!coords) {
+      setSortedMosques([]);
+      return;
+    }
     setLocation({ latitude: coords.lat, longitude: coords.lng, address: "Lokasi Anda Saat Ini" });
     setLocationError(null);
+    setLocationPermissionDenied(false);
     setIsLoadingLocation(false);
 
     // Recompute distance + sort (simple client-side approximation).
@@ -98,6 +104,7 @@ export const MosqueFinderPage = () => {
   const requestLocation = () => {
     setIsLoadingLocation(true);
     setLocationError(null);
+    setLocationPermissionDenied(false);
 
     if (!navigator.geolocation) {
       setLocationError("Geolocation tidak didukung oleh browser Anda");
@@ -105,8 +112,24 @@ export const MosqueFinderPage = () => {
       return;
     }
 
-    // Trigger hook's location refresh; UI here will update once coords changes.
-    refetchPrayer();
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        // Success - trigger hook's location refresh
+        refetchPrayer();
+      },
+      (error) => {
+        setIsLoadingLocation(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationPermissionDenied(true);
+          setLocationError("Akses lokasi ditolak. Aktifkan lokasi di pengaturan browser.");
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setLocationError("Lokasi tidak tersedia. Coba lagi nanti.");
+        } else {
+          setLocationError("Gagal mendapatkan lokasi. Coba lagi.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   const openGoogleMapsRoute = (mosque: typeof nearbyMosques[0]) => {
@@ -283,75 +306,102 @@ export const MosqueFinderPage = () => {
         className="px-5"
       >
         <h2 className="text-sm font-semibold text-foreground mb-3">Masjid Terdekat</h2>
-        <div className="space-y-3">
-          {sortedMosques.map((mosque: any, index) => (
-            <motion.div
-              key={mosque.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 + index * 0.1 }}
-            >
-              <Card variant="default" className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h3 className="text-sm font-semibold text-foreground">{mosque.name}</h3>
-                      <p className="text-xs text-muted-foreground">{mosque.address}</p>
+        
+        {/* Show message if location not available */}
+        {!location && (
+          <Card variant="default" className="overflow-hidden">
+            <CardContent className="p-6 text-center">
+              <MapPin className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-foreground mb-1">Masjid Terdekat Tidak Tersedia</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                {locationPermissionDenied 
+                  ? "Aktifkan izin lokasi di pengaturan browser untuk melihat masjid terdekat"
+                  : "Izinkan akses lokasi untuk menemukan masjid di sekitarmu"}
+              </p>
+              <Button variant="spiritual" size="sm" onClick={requestLocation} disabled={isLoadingLocation}>
+                {isLoadingLocation ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <MapPin className="h-4 w-4 mr-1" />
+                )}
+                Aktifkan Lokasi
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Show mosques when location is available */}
+        {location && sortedMosques.length > 0 && (
+          <div className="space-y-3">
+            {sortedMosques.map((mosque: any, index) => (
+              <motion.div
+                key={mosque.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + index * 0.1 }}
+              >
+                <Card variant="default" className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-semibold text-foreground">{mosque.name}</h3>
+                        <p className="text-xs text-muted-foreground">{mosque.address}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-medium text-primary">{mosque.distance}</span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs font-medium text-primary">{mosque.distance}</span>
+                    
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">{mosque.nextPrayer}</span>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 mb-3">
-                    <Clock className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">{mosque.nextPrayer}</span>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {mosque.facilities.map((facility) => (
-                      <span key={facility} className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                        {facility}
-                      </span>
-                    ))}
-                    {mosque.hasKajian && (
-                      <span className="text-[10px] bg-accent-soft text-accent px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <BookOpen className="h-2.5 w-2.5" />
-                        Kajian {mosque.kajianTime}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="spiritual" 
-                      size="sm" 
-                      className="flex-1"
-                      onClick={() => openGoogleMapsRoute(mosque)}
-                    >
-                      <Navigation className="h-3.5 w-3.5" />
-                      Rute
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => callMosque(mosque.phone)}
-                    >
-                      <Phone className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${mosque.lat},${mosque.lng}`, "_blank")}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                    
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {mosque.facilities.map((facility: string) => (
+                        <span key={facility} className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                          {facility}
+                        </span>
+                      ))}
+                      {mosque.hasKajian && (
+                        <span className="text-[10px] bg-accent-soft text-accent px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <BookOpen className="h-2.5 w-2.5" />
+                          Kajian {mosque.kajianTime}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="spiritual" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => openGoogleMapsRoute(mosque)}
+                      >
+                        <Navigation className="h-3.5 w-3.5" />
+                        Rute
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => callMosque(mosque.phone)}
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${mosque.lat},${mosque.lng}`, "_blank")}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </motion.div>
 
       {/* Map Placeholder - Open in Google Maps */}
