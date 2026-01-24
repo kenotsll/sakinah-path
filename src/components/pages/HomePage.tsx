@@ -12,7 +12,7 @@ interface HomePageProps {
   onOpenNotifications?: () => void;
 }
 
-export const HomePage = ({ onNavigate }: HomePageProps) => {
+export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: HomePageProps) => {
   const handleActionClick = (actionId: string) => {
     const tabMap: Record<string, string> = {
       taubat: "guide",
@@ -27,7 +27,7 @@ export const HomePage = ({ onNavigate }: HomePageProps) => {
 
   return (
     <div className="min-h-screen pb-32 gradient-calm">
-      <Header />
+      <Header onOpenProfile={onOpenProfile} onOpenNotifications={onOpenNotifications} />
       
       {/* Hero Section */}
       <motion.div

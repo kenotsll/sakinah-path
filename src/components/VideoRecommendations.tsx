@@ -1,33 +1,15 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Play } from "lucide-react";
-import heroMosque from "@/assets/hero-mosque.jpg";
+import { videoDatabase } from "@/data/videos";
 
-const videos = [
-  {
-    id: "1",
-    title: "Jangan Putus Asa dari Rahmat Allah",
-    category: "Harapan",
-    duration: "5:32",
-    thumbnail: heroMosque,
-  },
-  {
-    id: "2",
-    title: "Langkah Pertama Menuju Hijrah",
-    category: "Hijrah",
-    duration: "8:15",
-    thumbnail: heroMosque,
-  },
-  {
-    id: "3",
-    title: "Keutamaan Bertaubat",
-    category: "Taubat",
-    duration: "6:45",
-    thumbnail: heroMosque,
-  },
-];
+const videos = videoDatabase.slice(0, 8);
 
 export const VideoRecommendations = () => {
+  const openYouTube = (url: string) => {
+    window.open(url, "_blank");
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -49,7 +31,11 @@ export const VideoRecommendations = () => {
             transition={{ duration: 0.3, delay: 0.6 + index * 0.1 }}
             className="flex-shrink-0 w-48"
           >
-            <Card variant="elevated" className="overflow-hidden cursor-pointer hover:shadow-glow transition-shadow">
+            <Card
+              variant="elevated"
+              className="overflow-hidden cursor-pointer hover:shadow-glow transition-shadow"
+              onClick={() => openYouTube(video.youtubeUrl)}
+            >
               <div className="relative h-28">
                 <img
                   src={video.thumbnail}

@@ -2,102 +2,17 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Bookmark, Filter, Search, ExternalLink } from "lucide-react";
-import heroMosque from "@/assets/hero-mosque.jpg";
 import { useState } from "react";
+import { videoCategories, videoDatabase } from "@/data/videos";
 
-const categories = [
-  { id: "all", label: "Semua" },
-  { id: "penyesalan", label: "Penyesalan" },
-  { id: "harapan", label: "Harapan" },
-  { id: "hijrah", label: "Hijrah" },
-  { id: "istiqomah", label: "Istiqomah" },
-];
-
-const videos = [
-  {
-    id: "1",
-    title: "Jangan Putus Asa dari Rahmat Allah",
-    category: "harapan",
-    duration: "5:32",
-    thumbnail: heroMosque,
-    speaker: "Ustadz Adi Hidayat",
-    views: "12K",
-    isBookmarked: true,
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  },
-  {
-    id: "2",
-    title: "Langkah Pertama Menuju Hijrah",
-    category: "hijrah",
-    duration: "8:15",
-    thumbnail: heroMosque,
-    speaker: "Ustadz Hanan Attaki",
-    views: "8K",
-    isBookmarked: false,
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  },
-  {
-    id: "3",
-    title: "Keutamaan Bertaubat di Malam Hari",
-    category: "penyesalan",
-    duration: "6:45",
-    thumbnail: heroMosque,
-    speaker: "Ustadz Khalid Basalamah",
-    views: "15K",
-    isBookmarked: true,
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  },
-  {
-    id: "4",
-    title: "Menjaga Istiqomah di Tengah Godaan",
-    category: "istiqomah",
-    duration: "12:30",
-    thumbnail: heroMosque,
-    speaker: "Ustadz Abdul Somad",
-    views: "20K",
-    isBookmarked: false,
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  },
-  {
-    id: "5",
-    title: "Air Mata Taubat yang Memadamkan Api Neraka",
-    category: "penyesalan",
-    duration: "7:20",
-    thumbnail: heroMosque,
-    speaker: "Ustadz Adi Hidayat",
-    views: "18K",
-    isBookmarked: false,
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  },
-  {
-    id: "6",
-    title: "Kisah Taubatnya Seorang Pembunuh 99 Jiwa",
-    category: "harapan",
-    duration: "15:45",
-    thumbnail: heroMosque,
-    speaker: "Ustadz Khalid Basalamah",
-    views: "25K",
-    isBookmarked: false,
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  },
-  {
-    id: "7",
-    title: "Cara Menjaga Hati dari Maksiat",
-    category: "hijrah",
-    duration: "10:00",
-    thumbnail: heroMosque,
-    speaker: "Ustadz Hanan Attaki",
-    views: "30K",
-    isBookmarked: true,
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-  },
-];
+const categories = videoCategories;
+const videos = videoDatabase;
 
 export const VideoMotivasiPage = () => {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [bookmarkedVideos, setBookmarkedVideos] = useState<string[]>(
-    videos.filter(v => v.isBookmarked).map(v => v.id)
+    []
   );
 
   const filteredVideos = videos.filter(video => {
@@ -106,6 +21,8 @@ export const VideoMotivasiPage = () => {
                           video.speaker.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  const featuredVideo = filteredVideos[0] ?? videos[0];
 
   const toggleBookmark = (videoId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -192,11 +109,11 @@ export const VideoMotivasiPage = () => {
         <Card 
           variant="elevated" 
           className="overflow-hidden cursor-pointer"
-          onClick={() => openYouTube(videos[0].youtubeUrl)}
+          onClick={() => openYouTube(featuredVideo.youtubeUrl)}
         >
           <div className="relative h-44">
             <img
-              src={heroMosque}
+              src={featuredVideo.thumbnail}
               alt="Featured video"
               className="w-full h-full object-cover"
             />
@@ -218,13 +135,13 @@ export const VideoMotivasiPage = () => {
             </div>
             <div className="absolute bottom-4 left-4 right-4">
               <span className="text-[10px] font-medium text-primary-foreground bg-accent/80 px-2 py-0.5 rounded-full">
-                Harapan
+                {featuredVideo.category}
               </span>
               <h3 className="text-base font-semibold text-primary-foreground mt-2">
-                Jangan Putus Asa dari Rahmat Allah
+                {featuredVideo.title}
               </h3>
               <p className="text-xs text-primary-foreground/70 mt-1">
-                Ustadz Adi Hidayat • 5:32
+                {featuredVideo.speaker} • {featuredVideo.duration}
               </p>
             </div>
           </div>
@@ -293,14 +210,14 @@ export const VideoMotivasiPage = () => {
                         </h3>
                         <p className="text-xs text-muted-foreground mb-1">{video.speaker}</p>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground">{video.views} views</span>
                           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                            video.category === "harapan" ? "bg-primary-soft text-primary" :
-                            video.category === "hijrah" ? "bg-spiritual-soft text-spiritual" :
-                            video.category === "istiqomah" ? "bg-secondary text-secondary-foreground" :
-                            "bg-hope text-hope-foreground"
+                            video.category === "Harapan" ? "bg-primary-soft text-primary" :
+                            video.category === "Hijrah" ? "bg-spiritual-soft text-spiritual" :
+                            video.category === "Istiqamah" ? "bg-secondary text-secondary-foreground" :
+                            video.category === "Taubat" ? "bg-hope text-hope-foreground" :
+                            "bg-muted text-muted-foreground"
                           }`}>
-                            {categories.find(c => c.id === video.category)?.label}
+                            {video.category}
                           </span>
                         </div>
                       </div>
