@@ -1,7 +1,8 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
+import { useState } from "react";
 
 interface Task {
   id: string;
@@ -9,17 +10,37 @@ interface Task {
   completed: boolean;
 }
 
-const dailyTasks: Task[] = [
-  { id: "1", title: "Shalat 5 waktu tepat waktu", completed: true },
-  { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: true },
+const initialTasks: Task[] = [
+  { id: "1", title: "Shalat 5 waktu tepat waktu", completed: false },
+  { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: false },
   { id: "3", title: "Dzikir pagi & petang", completed: false },
   { id: "4", title: "Istighfar 100x", completed: false },
   { id: "5", title: "Sedekah hari ini", completed: false },
 ];
 
-export const DailyProgress = () => {
-  const completedCount = dailyTasks.filter(t => t.completed).length;
-  const progressValue = (completedCount / dailyTasks.length) * 100;
+interface DailyProgressProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+
+  // Auto-sort: completed tasks go to bottom, incomplete to top
+  const toggleTask = (taskId: string) => {
+    setTasks(prev => {
+      const updated = prev.map(task =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      );
+      // Sort: incomplete first, then completed
+      return updated.sort((a, b) => Number(a.completed) - Number(b.completed));
+    });
+  };
+
+  const completedCount = tasks.filter(t => t.completed).length;
+  const progressValue = (completedCount / tasks.length) * 100;
+
+  // Show first 3 tasks (sorted, so incomplete first)
+  const visibleTasks = tasks.slice(0, 3);
 
   return (
     <motion.div
@@ -36,7 +57,7 @@ export const DailyProgress = () => {
               Progress Hari Ini
             </CardTitle>
             <span className="text-sm font-semibold text-primary">
-              {completedCount}/{dailyTasks.length}
+              {completedCount}/{tasks.length}
             </span>
           </div>
         </CardHeader>
@@ -44,26 +65,40 @@ export const DailyProgress = () => {
           <Progress value={progressValue} className="h-2" />
           
           <div className="space-y-2">
-            {dailyTasks.slice(0, 3).map((task) => (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-3 py-2"
-              >
-                {task.completed ? (
-                  <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-                ) : (
-                  <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                )}
-                <span className={`text-sm ${task.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                  {task.title}
-                </span>
-              </motion.div>
-            ))}
+            <AnimatePresence mode="popLayout">
+              {visibleTasks.map((task) => (
+                <motion.div
+                  key={task.id}
+                  layout
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center gap-3 py-2 cursor-pointer"
+                  onClick={() => toggleTask(task.id)}
+                >
+                  <motion.div
+                    whileTap={{ scale: 0.9 }}
+                    className="flex-shrink-0"
+                  >
+                    {task.completed ? (
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </motion.div>
+                  <span className={`text-sm ${task.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                    {task.title}
+                  </span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
           
-          <button className="w-full text-center text-sm font-medium text-primary hover:text-primary-glow transition-colors">
+          <button 
+            className="w-full text-center text-sm font-medium text-primary hover:text-primary-glow transition-colors"
+            onClick={() => onNavigate?.("hijrah")}
+          >
             Lihat semua target →
           </button>
         </CardContent>
