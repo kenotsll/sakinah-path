@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Task {
   id: string;
@@ -24,6 +25,7 @@ interface DailyProgressProps {
 
 export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { t, language } = useLanguage();
 
   // Auto-sort: completed tasks go to bottom, incomplete to top
   const toggleTask = (taskId: string) => {
@@ -49,12 +51,12 @@ export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
       transition={{ duration: 0.6, delay: 0.4 }}
       className="px-5"
     >
-      <Card variant="spiritual">
+      <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Progress Hari Ini
+              {t('home.dailyProgress')}
             </CardTitle>
             <span className="text-sm font-semibold text-primary">
               {completedCount}/{tasks.length}
@@ -74,7 +76,11 @@ export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.3 }}
-                  className="flex items-center gap-3 py-2 cursor-pointer"
+                  className={`flex items-center gap-3 py-2 cursor-pointer rounded-lg px-2 transition-all ${
+                    task.completed 
+                      ? 'task-complete' 
+                      : 'task-incomplete'
+                  }`}
                   onClick={() => toggleTask(task.id)}
                 >
                   <motion.div
@@ -97,9 +103,9 @@ export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
           
           <button 
             className="w-full text-center text-sm font-medium text-primary hover:text-primary-glow transition-colors"
-            onClick={() => onNavigate?.("hijrah")}
+            onClick={() => onNavigate?.("tasks")}
           >
-            Lihat semua target →
+            {language === 'id' ? 'Lihat semua target →' : 'View all goals →'}
           </button>
         </CardContent>
       </Card>
