@@ -12,13 +12,13 @@
     --primary-soft: 142 25% 92%;
     --primary-glow: 142 35% 55%;
     
-    /* Background - Warm Cream */
-    --background: 40 30% 97%;
-    --foreground: 25 15% 20%;
+    /* Background - Light Mode Istiqamah */
+    --background: 120 12% 97%; /* #F9FBF9 */
+    --foreground: 140 35% 15%; /* #1B3022 */
     
     /* Card - Soft White */
-    --card: 40 40% 99%;
-    --card-foreground: 25 15% 20%;
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 140 35% 15%;
     
     /* Secondary - Sky Blue (hope) */
     --secondary: 200 40% 92%;
@@ -26,13 +26,13 @@
     --secondary-accent: 200 45% 65%;
     
     /* Accent - Warm Gold */
-    --accent: 38 70% 55%;
+    --accent: 38 50% 55%; /* #C5A059 */
     --accent-foreground: 38 80% 20%;
     --accent-soft: 38 50% 92%;
     
     /* Muted - Soft neutrals */
-    --muted: 40 20% 94%;
-    --muted-foreground: 25 10% 50%;
+    --muted: 120 10% 95%; /* #F0F4F1 */
+    --muted-foreground: 80 25% 35%; /* #556B2F */
     
     /* Spiritual - Deep Teal */
     --spiritual: 175 40% 35%;
@@ -44,75 +44,115 @@
     --hope-foreground: 350 50% 40%;
     
     /* Popover */
-    --popover: 40 40% 99%;
-    --popover-foreground: 25 15% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 140 35% 15%;
     
     /* Border */
-    --border: 40 20% 88%;
-    --input: 40 20% 88%;
+    --border: 120 15% 89%; /* #E2E8E4 */
+    --input: 120 10% 95%; /* #F0F4F1 */
     --ring: 142 30% 45%;
     
     /* Destructive */
-    --destructive: 0 60% 50%;
+    --destructive: 0 65% 45%; /* #B91C1C */
     --destructive-foreground: 0 0% 100%;
+    
+    /* Success/Available */
+    --success: 150 50% 30%; /* #2D6A4F */
+    --success-foreground: 0 0% 100%;
     
     /* Radius */
     --radius: 1rem;
     
     /* Shadows */
-    --shadow-soft: 0 4px 20px -4px hsl(25 15% 20% / 0.08);
-    --shadow-card: 0 8px 30px -8px hsl(25 15% 20% / 0.1);
+    --shadow-soft: 0 4px 20px -4px hsl(140 35% 15% / 0.08);
+    --shadow-card: 0 8px 30px -8px hsl(140 35% 15% / 0.1);
     --shadow-glow: 0 0 40px -10px hsl(142 30% 45% / 0.3);
     
     /* Gradients */
     --gradient-hero: linear-gradient(135deg, hsl(142 30% 45%) 0%, hsl(175 40% 35%) 100%);
-    --gradient-calm: linear-gradient(180deg, hsl(40 30% 97%) 0%, hsl(142 25% 95%) 100%);
+    --gradient-calm: linear-gradient(180deg, hsl(120 12% 97%) 0%, hsl(142 25% 95%) 100%);
     --gradient-hope: linear-gradient(135deg, hsl(200 40% 92%) 0%, hsl(175 30% 92%) 100%);
     --gradient-sunrise: linear-gradient(135deg, hsl(38 70% 55%) 0%, hsl(350 40% 70%) 100%);
     
     /* Sidebar */
-    --sidebar-background: 40 30% 97%;
-    --sidebar-foreground: 25 15% 20%;
+    --sidebar-background: 120 12% 97%;
+    --sidebar-foreground: 140 35% 15%;
     --sidebar-primary: 142 30% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 142 25% 92%;
     --sidebar-accent-foreground: 142 30% 30%;
-    --sidebar-border: 40 20% 88%;
+    --sidebar-border: 120 15% 89%;
     --sidebar-ring: 142 30% 45%;
   }
 
   .dark {
-    --primary: 142 35% 55%;
-    --primary-foreground: 25 15% 10%;
-    --primary-soft: 142 20% 20%;
+    /* Background - Midnight Black Istiqamah */
+    --background: 0 0% 0%; /* #000000 */
+    --foreground: 0 0% 100%; /* #FFFFFF */
     
-    --background: 25 15% 10%;
-    --foreground: 40 20% 92%;
+    /* Card - Material Dark Surface */
+    --card: 0 0% 7%; /* #121212 */
+    --card-foreground: 0 0% 100%;
     
-    --card: 25 12% 14%;
-    --card-foreground: 40 20% 92%;
+    /* Primary - Sage Green Deep */
+    --primary: 110 30% 35%; /* #4F7942 */
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 110 20% 15%;
+    --primary-glow: 110 35% 45%;
     
-    --secondary: 200 30% 20%;
+    /* Secondary */
+    --secondary: 200 30% 15%;
     --secondary-foreground: 200 40% 85%;
+    --secondary-accent: 200 35% 50%;
     
-    --accent: 38 60% 50%;
-    --accent-foreground: 38 80% 95%;
+    /* Accent - Metallic Gold */
+    --accent: 45 75% 52%; /* #D4AF37 */
+    --accent-foreground: 0 0% 0%;
+    --accent-soft: 45 30% 15%;
     
-    --muted: 25 10% 20%;
-    --muted-foreground: 25 10% 60%;
+    /* Muted */
+    --muted: 0 0% 12%; /* #1E1E1E */
+    --muted-foreground: 0 0% 63%; /* #A0A0A0 */
     
+    /* Spiritual */
     --spiritual: 175 35% 45%;
     --spiritual-foreground: 0 0% 100%;
+    --spiritual-soft: 175 20% 15%;
     
-    --popover: 25 12% 14%;
-    --popover-foreground: 40 20% 92%;
+    /* Hope */
+    --hope: 350 30% 20%;
+    --hope-foreground: 350 40% 80%;
     
-    --border: 25 10% 22%;
-    --input: 25 10% 22%;
-    --ring: 142 35% 55%;
+    /* Popover */
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
     
-    --destructive: 0 50% 45%;
-    --destructive-foreground: 0 0% 100%;
+    /* Border */
+    --border: 0 0% 17%; /* #2C2C2C */
+    --input: 0 0% 12%; /* #1E1E1E */
+    --ring: 110 30% 35%;
+    
+    /* Destructive - Bright Red for Dark */
+    --destructive: 0 80% 65%; /* #FF5252 */
+    --destructive-foreground: 0 0% 0%;
+    
+    /* Success/Available - Neon Green Soft */
+    --success: 145 100% 45%; /* #00E676 */
+    --success-foreground: 0 0% 0%;
+    
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(110 30% 35%) 0%, hsl(45 75% 52%) 100%);
+    --gradient-calm: linear-gradient(180deg, hsl(0 0% 0%) 0%, hsl(0 0% 7%) 100%);
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 110 30% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 7%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 17%;
+    --sidebar-ring: 110 30% 35%;
   }
 }
 
@@ -157,6 +197,36 @@
   
   .islamic-pattern {
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5L35 15L45 15L37 22L40 32L30 26L20 32L23 22L15 15L25 15L30 5Z' fill='none' stroke='%2395b8a6' stroke-opacity='0.1' stroke-width='1'/%3E%3C/svg%3E");
+  }
+
+  /* Task list items */
+  .task-incomplete {
+    @apply border border-primary/30 bg-transparent;
+  }
+  
+  .task-complete {
+    @apply bg-muted line-through opacity-60;
+  }
+  
+  .dark .task-complete {
+    @apply bg-[#0A0A0A] opacity-40;
+  }
+  
+  /* Language switcher */
+  .lang-switcher-active {
+    @apply bg-primary text-primary-foreground;
+  }
+  
+  .dark .lang-switcher-active {
+    @apply bg-accent text-accent-foreground;
+  }
+  
+  .lang-switcher-inactive {
+    @apply bg-muted text-muted-foreground;
+  }
+  
+  .dark .lang-switcher-inactive {
+    @apply bg-card text-foreground;
   }
 }
 

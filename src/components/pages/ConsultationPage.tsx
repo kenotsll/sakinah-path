@@ -142,11 +142,13 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                         {/* Online Status Indicator */}
                         <div
                           className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-card flex items-center justify-center ${
-                            isAvailable ? "bg-green-500" : "bg-red-500"
+                            isAvailable 
+                              ? "bg-[hsl(var(--success))]" 
+                              : "bg-destructive"
                           }`}
                         >
                           <Circle
-                            className={`h-2 w-2 ${isAvailable ? "text-green-200" : "text-red-200"}`}
+                            className="h-2 w-2 text-card"
                             fill="currentColor"
                           />
                         </div>
@@ -169,7 +171,9 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                           </span>
                           <span
                             className={`text-xs font-medium ml-1 ${
-                              isAvailable ? "text-green-600" : "text-red-500"
+                              isAvailable 
+                                ? "text-[hsl(var(--success))]" 
+                                : "text-destructive"
                             }`}
                           >
                             {isAvailable ? "• Online" : "• Offline"}
