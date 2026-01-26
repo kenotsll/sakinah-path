@@ -1,4 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
+import { z } from 'zod';
+
+// Zod schema for validating prayer time format (HH:MM or HH:MM (TZ))
+const timeSchema = z.string().regex(/^\d{2}:\d{2}(\s*\([A-Z]+\))?$/, "Invalid time format");
+
+// Schema for validating the prayer times object from API
+const prayerTimesSchema = z.object({
+  Fajr: timeSchema,
+  Sunrise: timeSchema,
+  Dhuhr: timeSchema,
+  Asr: timeSchema,
+  Maghrib: timeSchema,
+  Isha: timeSchema,
+});
+
+// Schema for API response validation
+const apiResponseSchema = z.object({
+  code: z.number(),
+  data: z.object({
+    timings: prayerTimesSchema,
+    meta: z.object({
+      timezone: z.string().optional(),
+    }).optional(),
+  }),
+});
 
 interface PrayerTimes {
   Fajr: string;
@@ -28,6 +53,9 @@ const PRAYER_NAMES: Record<string, string> = {
   Isha: "Isya",
 };
 
+// Helper to extract clean time (remove timezone suffix like "(WIB)")
+const cleanTime = (time: string): string => time.replace(/\s*\([A-Z]+\)$/, '');
+
 export const usePrayerTimes = (): PrayerTimesData => {
   const [times, setTimes] = useState<PrayerTimes | null>(null);
   const [location, setLocation] = useState<{ city: string; country: string } | null>(null);
@@ -52,23 +80,36 @@ export const usePrayerTimes = (): PrayerTimesData => {
 
       const data = await response.json();
       
-      if (data.code === 200) {
-        const timings = data.data.timings;
+      // Validate API response with Zod schema
+      const validationResult = apiResponseSchema.safeParse(data);
+      
+      if (!validationResult.success) {
+        throw new Error("Data jadwal shalat tidak valid");
+      }
+
+      const validatedData = validationResult.data;
+      
+      if (validatedData.code === 200) {
+        const timings = validatedData.data.timings;
+        
+        // Clean time values and set state
         setTimes({
-          Fajr: timings.Fajr,
-          Sunrise: timings.Sunrise,
-          Dhuhr: timings.Dhuhr,
-          Asr: timings.Asr,
-          Maghrib: timings.Maghrib,
-          Isha: timings.Isha,
+          Fajr: cleanTime(timings.Fajr),
+          Sunrise: cleanTime(timings.Sunrise),
+          Dhuhr: cleanTime(timings.Dhuhr),
+          Asr: cleanTime(timings.Asr),
+          Maghrib: cleanTime(timings.Maghrib),
+          Isha: cleanTime(timings.Isha),
         });
 
         // Get location name from meta
-        if (data.data.meta?.timezone) {
-          const timezone = data.data.meta.timezone;
+        if (validatedData.data.meta?.timezone) {
+          const timezone = validatedData.data.meta.timezone;
           const city = timezone.split("/").pop()?.replace(/_/g, " ") || "Unknown";
           setLocation({ city, country: "Indonesia" });
         }
+      } else {
+        throw new Error("API mengembalikan kode error");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan");
