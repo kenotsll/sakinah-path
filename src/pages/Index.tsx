@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { HomePage } from "@/components/pages/HomePage";
+import { QuranPage } from "@/components/pages/QuranPage";
 import { TaubatGuidePage } from "@/components/pages/TaubatGuidePage";
 import { VideoMotivasiPage } from "@/components/pages/VideoMotivasiPage";
 import { HijrahTasksPage } from "@/components/pages/HijrahTasksPage";
@@ -43,6 +44,8 @@ const Index = () => {
             onOpenNotifications={() => setShowNotifications(true)}
           />
         );
+      case "quran":
+        return <QuranPage />;
       case "guide":
         return <TaubatGuidePage />;
       case "videos":

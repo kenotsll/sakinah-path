@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Home, BookOpen, Video, CheckSquare, MessageCircle, MapPin } from "lucide-react";
+import { Home, Book, Video, CheckSquare, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -9,15 +9,14 @@ interface BottomNavigationProps {
 }
 
 export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const tabs = [
     { id: "home", label: t('nav.home'), icon: Home },
-    { id: "guide", label: t('nav.guide'), icon: BookOpen },
+    { id: "quran", label: "Qur'an", icon: Book },
     { id: "videos", label: t('nav.videos'), icon: Video },
     { id: "tasks", label: t('nav.tasks'), icon: CheckSquare },
-    { id: "consult", label: t('nav.consult'), icon: MessageCircle },
-    { id: "mosque", label: "Masjid", icon: MapPin },
+    { id: "mosque", label: language === 'id' ? 'Masjid' : 'Mosque', icon: MapPin },
   ];
 
   return (
@@ -29,7 +28,7 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
     >
       <div className="mx-auto max-w-lg px-4 pb-2">
         <div className="bg-card/95 backdrop-blur-xl border border-border rounded-2xl px-2 py-2 shadow-card">
-          <div className="grid grid-cols-6 gap-1">
+          <div className="grid grid-cols-5 gap-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
