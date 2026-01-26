@@ -2,140 +2,14 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Clock, BookOpen, Phone, ExternalLink, AlertCircle, Loader2, RefreshCw } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { usePrayerTimes } from "@/hooks/usePrayerTimes";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useMosqueSearch, Mosque } from "@/hooks/useMosqueSearch";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-interface Mosque {
-  id: string;
-  name: string;
-  type: "masjid" | "musholla";
-  address: string;
-  distance: string;
-  nextPrayer: string;
-  facilities: string[];
-  hasKajian: boolean;
-  kajianTime?: string;
-  phone: string;
-  lat: number;
-  lng: number;
-}
-
-// Demo data - includes both masjid and musholla
-const nearbyMosques: Mosque[] = [
-  {
-    id: "1",
-    name: "Masjid Al-Ikhlas",
-    type: "masjid",
-    address: "Jl. Kebon Jeruk No. 15",
-    distance: "0.5 km",
-    nextPrayer: "Dzuhur - 12:05",
-    facilities: ["Wudhu", "Parkir", "AC"],
-    hasKajian: true,
-    kajianTime: "Ba'da Maghrib",
-    phone: "+6221-1234567",
-    lat: -6.2088,
-    lng: 106.8456,
-  },
-  {
-    id: "2",
-    name: "Musholla Ar-Rahman",
-    type: "musholla",
-    address: "Jl. Thamrin No. 45",
-    distance: "0.8 km",
-    nextPrayer: "Dzuhur - 12:05",
-    facilities: ["Wudhu"],
-    hasKajian: false,
-    phone: "+6221-2345678",
-    lat: -6.1954,
-    lng: 106.8234,
-  },
-  {
-    id: "3",
-    name: "Masjid Raya Al-Hidayah",
-    type: "masjid",
-    address: "Jl. Sudirman No. 88",
-    distance: "1.2 km",
-    nextPrayer: "Dzuhur - 12:05",
-    facilities: ["Wudhu", "Parkir", "AC", "Mushola Wanita"],
-    hasKajian: true,
-    kajianTime: "Setiap Ahad, 08:00",
-    phone: "+6221-3456789",
-    lat: -6.2188,
-    lng: 106.8556,
-  },
-  {
-    id: "4",
-    name: "Musholla Baitul Makmur",
-    type: "musholla",
-    address: "Jl. Melati No. 42",
-    distance: "1.5 km",
-    nextPrayer: "Dzuhur - 12:10",
-    facilities: ["Wudhu"],
-    hasKajian: false,
-    phone: "+6221-4567890",
-    lat: -6.2288,
-    lng: 106.8656,
-  },
-  {
-    id: "5",
-    name: "Masjid Nurul Iman",
-    type: "masjid",
-    address: "Jl. Anggrek No. 7",
-    distance: "1.8 km",
-    nextPrayer: "Dzuhur - 12:05",
-    facilities: ["Wudhu", "Parkir"],
-    hasKajian: false,
-    phone: "+6221-5678901",
-    lat: -6.2388,
-    lng: 106.8756,
-  },
-  {
-    id: "6",
-    name: "Musholla An-Nur",
-    type: "musholla",
-    address: "Jl. Menteng Raya No. 56",
-    distance: "2.0 km",
-    nextPrayer: "Dzuhur - 12:10",
-    facilities: ["Wudhu", "AC"],
-    hasKajian: true,
-    kajianTime: "Ba'da Ashar",
-    phone: "+6221-6789012",
-    lat: -6.1920,
-    lng: 106.8410,
-  },
-  {
-    id: "7",
-    name: "Masjid Baitul Rahman",
-    type: "masjid",
-    address: "Jl. Cempaka No. 12",
-    distance: "2.3 km",
-    nextPrayer: "Dzuhur - 12:05",
-    facilities: ["Wudhu", "Parkir", "AC", "TPA"],
-    hasKajian: true,
-    kajianTime: "Ba'da Isya",
-    phone: "+6221-7890123",
-    lat: -6.2488,
-    lng: 106.8856,
-  },
-];
-
-// Calculate distance between two coordinates in km
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export const MosqueFinderPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { times, nextPrayer, location: prayerLocation } = usePrayerTimes();
   const { 
     latitude, 
@@ -148,26 +22,28 @@ export const MosqueFinderPage = () => {
     requestLocation 
   } = useGeolocation();
 
+  const {
+    mosques,
+    loading: mosquesLoading,
+    error: mosquesError,
+    searchNearbyMosques,
+  } = useMosqueSearch();
+
   // Start watching on mount
   useEffect(() => {
     startWatching();
     return () => stopWatching();
   }, [startWatching, stopWatching]);
 
-  // Sort mosques by distance when coordinates change
-  const sortedMosques = useMemo(() => {
-    if (!latitude || !longitude) return [];
-    
-    return [...nearbyMosques]
-      .map((mosque) => ({
-        ...mosque,
-        _distanceKm: calculateDistance(latitude, longitude, mosque.lat, mosque.lng),
-        distance: `${calculateDistance(latitude, longitude, mosque.lat, mosque.lng).toFixed(1)} km`,
-      }))
-      .sort((a, b) => a._distanceKm - b._distanceKm);
-  }, [latitude, longitude]);
+  // Search mosques when location changes
+  useEffect(() => {
+    if (latitude && longitude) {
+      searchNearbyMosques(latitude, longitude, 5);
+    }
+  }, [latitude, longitude, searchNearbyMosques]);
 
   const hasLocation = latitude !== null && longitude !== null;
+  const isLoading = geoLoading || mosquesLoading;
 
   const openGoogleMapsRoute = (mosque: Mosque) => {
     let url: string;
@@ -201,6 +77,14 @@ export const MosqueFinderPage = () => {
     startWatching();
   };
 
+  const handleRefresh = () => {
+    if (latitude && longitude) {
+      searchNearbyMosques(latitude, longitude, 5);
+    } else {
+      requestLocation();
+    }
+  };
+
   return (
     <div className="min-h-screen pb-32 bg-background">
       {/* Header */}
@@ -220,10 +104,10 @@ export const MosqueFinderPage = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={requestLocation}
-              disabled={geoLoading}
+              onClick={handleRefresh}
+              disabled={isLoading}
             >
-              <RefreshCw className={`h-5 w-5 ${geoLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           )}
         </div>
@@ -245,7 +129,9 @@ export const MosqueFinderPage = () => {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">{t('common.loading')}</p>
-                  <p className="text-xs text-muted-foreground">Mencari lokasi dengan akurasi tinggi...</p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'id' ? 'Mencari lokasi dengan akurasi tinggi...' : 'Finding location with high accuracy...'}
+                  </p>
                 </div>
               </div>
             ) : !hasLocation ? (
@@ -274,7 +160,9 @@ export const MosqueFinderPage = () => {
                   <MapPin className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Lokasimu saat ini</p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'id' ? 'Lokasimu saat ini' : 'Your current location'}
+                  </p>
                   <p className="text-sm font-medium text-foreground">
                     {latitude?.toFixed(4)}, {longitude?.toFixed(4)}
                   </p>
@@ -343,8 +231,25 @@ export const MosqueFinderPage = () => {
         transition={{ delay: 0.3 }}
         className="px-5"
       >
-        <h2 className="text-sm font-semibold text-foreground mb-3">{t('mosque.title')}</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground">{t('mosque.title')}</h2>
+          {mosques.length > 0 && (
+            <span className="text-xs text-muted-foreground">{mosques.length} ditemukan</span>
+          )}
+        </div>
         
+        {/* Loading Mosques */}
+        {mosquesLoading && hasLocation && (
+          <Card className="bg-card border-border">
+            <CardContent className="p-6 text-center">
+              <Loader2 className="h-10 w-10 text-primary mx-auto mb-3 animate-spin" />
+              <p className="text-sm text-muted-foreground">
+                {language === 'id' ? 'Mencari masjid terdekat...' : 'Searching nearby mosques...'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Show message if location not available */}
         {!hasLocation && !geoLoading && (
           <Card className="bg-card border-border overflow-hidden">
@@ -353,7 +258,9 @@ export const MosqueFinderPage = () => {
               <p className="text-sm font-medium text-foreground mb-1">{t('mosque.notAvailable')}</p>
               <p className="text-xs text-muted-foreground mb-4">
                 {permissionDenied 
-                  ? "Aktifkan izin lokasi di pengaturan browser untuk melihat masjid terdekat"
+                  ? (language === 'id' 
+                      ? "Aktifkan izin lokasi di pengaturan browser untuk melihat masjid terdekat"
+                      : "Enable location permission in browser settings to see nearby mosques")
                   : t('mosque.enableLocationDesc')}
               </p>
               <Button 
@@ -372,15 +279,28 @@ export const MosqueFinderPage = () => {
           </Card>
         )}
 
+        {/* Error State */}
+        {mosquesError && hasLocation && !mosquesLoading && (
+          <Card className="bg-card border-border">
+            <CardContent className="p-6 text-center">
+              <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm text-muted-foreground mb-4">{mosquesError}</p>
+              <Button onClick={handleRefresh} variant="outline" size="sm">
+                {t('common.retry')}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Show mosques when location is available */}
-        {hasLocation && sortedMosques.length > 0 && (
+        {hasLocation && mosques.length > 0 && !mosquesLoading && (
           <div className="space-y-3">
-            {sortedMosques.map((mosque, index) => (
+            {mosques.map((mosque, index) => (
               <motion.div
                 key={mosque.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + index * 0.05 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
               >
                 <Card className="bg-card border-border overflow-hidden">
                   <CardContent className="p-4">
@@ -398,25 +318,6 @@ export const MosqueFinderPage = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 mb-3">
-                      <Clock className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">{mosque.nextPrayer}</span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {mosque.facilities.map((facility) => (
-                        <span key={facility} className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                          {facility}
-                        </span>
-                      ))}
-                      {mosque.hasKajian && (
-                        <span className="text-[10px] bg-accent/20 text-accent-foreground px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <BookOpen className="h-2.5 w-2.5" />
-                          Kajian {mosque.kajianTime}
-                        </span>
-                      )}
-                    </div>
-                    
                     <div className="flex gap-2">
                       <Button 
                         size="sm" 
@@ -426,13 +327,15 @@ export const MosqueFinderPage = () => {
                         <Navigation className="h-3.5 w-3.5" />
                         {t('mosque.route')}
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => callMosque(mosque.phone)}
-                      >
-                        <Phone className="h-3.5 w-3.5" />
-                      </Button>
+                      {mosque.phone && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => callMosque(mosque.phone!)}
+                        >
+                          <Phone className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -460,14 +363,16 @@ export const MosqueFinderPage = () => {
           <div className="h-40 bg-muted flex items-center justify-center">
             <div className="text-center">
               <MapPin className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground mb-2">Lihat Semua Masjid & Musholla di Peta</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                {language === 'id' ? 'Lihat Semua Masjid & Musholla di Peta' : 'View All Mosques on Map'}
+              </p>
               <Button 
                 size="sm"
                 onClick={openGoogleMapsSearch}
                 className="gradient-hero text-primary-foreground"
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
-                Buka Google Maps
+                {language === 'id' ? 'Buka Google Maps' : 'Open Google Maps'}
               </Button>
             </div>
           </div>

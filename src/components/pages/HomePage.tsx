@@ -15,6 +15,7 @@ interface HomePageProps {
 export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: HomePageProps) => {
   const handleActionClick = (actionId: string) => {
     const tabMap: Record<string, string> = {
+      quran: "quran",
       taubat: "guide",
       video: "videos",
       target: "tasks",

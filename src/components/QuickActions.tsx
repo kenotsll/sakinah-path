@@ -1,57 +1,60 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Video, CheckSquare, MessageCircle, MapPin, Heart } from "lucide-react";
-
-const quickActions = [
-  {
-    id: "taubat",
-    label: "Panduan Taubat",
-    icon: BookOpen,
-    color: "bg-primary-soft",
-    iconColor: "text-primary",
-  },
-  {
-    id: "video",
-    label: "Video Motivasi",
-    icon: Video,
-    color: "bg-secondary",
-    iconColor: "text-secondary-foreground",
-  },
-  {
-    id: "target",
-    label: "Target Hijrah",
-    icon: CheckSquare,
-    color: "bg-spiritual-soft",
-    iconColor: "text-spiritual",
-  },
-  {
-    id: "konsultasi",
-    label: "Konsultasi",
-    icon: MessageCircle,
-    color: "bg-hope",
-    iconColor: "text-hope-foreground",
-  },
-  {
-    id: "masjid",
-    label: "Cari Masjid",
-    icon: MapPin,
-    color: "bg-accent-soft",
-    iconColor: "text-accent",
-  },
-  {
-    id: "doa",
-    label: "Doa Taubat",
-    icon: Heart,
-    color: "bg-primary-soft",
-    iconColor: "text-primary",
-  },
-];
+import { Book, Video, CheckSquare, BookOpen, MapPin, Heart } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface QuickActionsProps {
   onActionClick: (actionId: string) => void;
 }
 
 export const QuickActions = ({ onActionClick }: QuickActionsProps) => {
+  const { language } = useLanguage();
+
+  const quickActions = [
+    {
+      id: "quran",
+      label: "Al-Qur'an",
+      icon: Book,
+      color: "bg-primary-soft",
+      iconColor: "text-primary",
+    },
+    {
+      id: "video",
+      label: language === 'id' ? "Video Motivasi" : "Motivation Videos",
+      icon: Video,
+      color: "bg-secondary",
+      iconColor: "text-secondary-foreground",
+    },
+    {
+      id: "target",
+      label: language === 'id' ? "Target Hijrah" : "Hijrah Goals",
+      icon: CheckSquare,
+      color: "bg-spiritual-soft",
+      iconColor: "text-spiritual",
+    },
+    {
+      id: "taubat",
+      label: language === 'id' ? "Panduan Taubat" : "Repentance Guide",
+      icon: BookOpen,
+      color: "bg-hope",
+      iconColor: "text-hope-foreground",
+    },
+    {
+      id: "masjid",
+      label: language === 'id' ? "Cari Masjid" : "Find Mosque",
+      icon: MapPin,
+      color: "bg-accent-soft",
+      iconColor: "text-accent",
+    },
+    {
+      id: "doa",
+      label: language === 'id' ? "Doa Taubat" : "Prayer",
+      icon: Heart,
+      color: "bg-primary-soft",
+      iconColor: "text-primary",
+    },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -59,7 +62,9 @@ export const QuickActions = ({ onActionClick }: QuickActionsProps) => {
       transition={{ duration: 0.6, delay: 0.3 }}
       className="px-5"
     >
-      <h3 className="text-sm font-semibold text-foreground mb-3">Akses Cepat</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-3">
+        {language === 'id' ? 'Akses Cepat' : 'Quick Actions'}
+      </h3>
       <div className="grid grid-cols-3 gap-3">
         {quickActions.map((action, index) => {
           const Icon = action.icon;

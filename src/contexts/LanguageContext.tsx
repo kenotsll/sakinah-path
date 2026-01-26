@@ -12,10 +12,12 @@ interface Translations {
 const translations: Translations = {
   // Navigation
   'nav.home': { id: 'Beranda', en: 'Home' },
+  'nav.quran': { id: "Qur'an", en: "Qur'an" },
   'nav.guide': { id: 'Panduan', en: 'Guide' },
   'nav.videos': { id: 'Video', en: 'Videos' },
   'nav.tasks': { id: 'Tugas', en: 'Tasks' },
   'nav.consult': { id: 'Konsultasi', en: 'Consult' },
+  'nav.mosque': { id: 'Masjid', en: 'Mosque' },
   
   // Home
   'home.greeting.morning': { id: 'Selamat Pagi', en: 'Good Morning' },
