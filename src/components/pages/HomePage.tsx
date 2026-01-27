@@ -4,6 +4,7 @@ import { DailyQuote } from "@/components/DailyQuote";
 import { QuickActions } from "@/components/QuickActions";
 import { DailyProgress } from "@/components/DailyProgress";
 import { VideoRecommendations } from "@/components/VideoRecommendations";
+import { HijriCalendarWidget } from "@/components/HijriCalendarWidget";
 import heroMosque from "@/assets/hero-mosque.jpg";
 
 interface HomePageProps {
@@ -19,7 +20,7 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: Hom
       taubat: "guide",
       video: "videos",
       target: "tasks",
-      konsultasi: "consult",
+      konsultasi: "guide",
       masjid: "mosque",
       doa: "guide",
     };
@@ -58,6 +59,16 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: Hom
             Langkah Menuju Kebaikan
           </p>
         </motion.div>
+      </motion.div>
+
+      {/* Hijri Calendar Widget */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="px-5 mb-6"
+      >
+        <HijriCalendarWidget />
       </motion.div>
 
       {/* Daily Quote */}

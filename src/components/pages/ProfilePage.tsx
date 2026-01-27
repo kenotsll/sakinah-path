@@ -102,8 +102,10 @@ export const ProfilePage = ({ onBack }: ProfilePageProps) => {
     toast.success('Berhasil keluar');
   };
 
-  const weeklyProgress = 68;
-  const daysActive = 5;
+  // Calculate real progress from profile/database
+  // New users start at 0
+  const weeklyProgress = profile ? 0 : 0; // Will be updated when we add task tracking
+  const daysActive = 0; // Will be calculated from real activity data
 
   if (authLoading) {
     return (

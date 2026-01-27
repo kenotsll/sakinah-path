@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Clock, BookOpen, Phone, ExternalLink, AlertCircle, Loader2, RefreshCw } from "lucide-react";
-import { useState, useEffect } from "react";
+import { MapPin, Navigation, Clock, Phone, ExternalLink, AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { usePrayerTimes } from "@/hooks/usePrayerTimes";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useMosqueSearch, Mosque } from "@/hooks/useMosqueSearch";
+import { useReverseGeocode } from "@/hooks/useReverseGeocode";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export const MosqueFinderPage = () => {
@@ -29,18 +30,66 @@ export const MosqueFinderPage = () => {
     searchNearbyMosques,
   } = useMosqueSearch();
 
+  const {
+    address,
+    loading: addressLoading,
+    reverseGeocode,
+  } = useReverseGeocode();
+
+  // Ref for auto-refresh interval
+  const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+
   // Start watching on mount
   useEffect(() => {
     startWatching();
-    return () => stopWatching();
+    return () => {
+      stopWatching();
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+      }
+    };
   }, [startWatching, stopWatching]);
 
-  // Search mosques when location changes
+  // Search mosques when location changes and get address
   useEffect(() => {
     if (latitude && longitude) {
-      searchNearbyMosques(latitude, longitude, 5);
+      // Check if coordinates changed significantly (more than 100m)
+      const coordsChanged = !lastCoordsRef.current || 
+        Math.abs(lastCoordsRef.current.lat - latitude) > 0.001 ||
+        Math.abs(lastCoordsRef.current.lng - longitude) > 0.001;
+
+      if (coordsChanged) {
+        lastCoordsRef.current = { lat: latitude, lng: longitude };
+        searchNearbyMosques(latitude, longitude, 5);
+        reverseGeocode(latitude, longitude);
+      }
     }
-  }, [latitude, longitude, searchNearbyMosques]);
+  }, [latitude, longitude, searchNearbyMosques, reverseGeocode]);
+
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    if (latitude && longitude) {
+      // Clear existing interval
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+      }
+
+      // Set up 5-minute auto-refresh
+      autoRefreshRef.current = setInterval(() => {
+        if (latitude && longitude) {
+          searchNearbyMosques(latitude, longitude, 5);
+          reverseGeocode(latitude, longitude);
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+
+      return () => {
+        if (autoRefreshRef.current) {
+          clearInterval(autoRefreshRef.current);
+        }
+      };
+    }
+  }, [latitude, longitude, searchNearbyMosques, reverseGeocode]);
 
   const hasLocation = latitude !== null && longitude !== null;
   const isLoading = geoLoading || mosquesLoading;
@@ -80,9 +129,19 @@ export const MosqueFinderPage = () => {
   const handleRefresh = () => {
     if (latitude && longitude) {
       searchNearbyMosques(latitude, longitude, 5);
+      reverseGeocode(latitude, longitude);
     } else {
       requestLocation();
     }
+  };
+
+  // Get display location text
+  const getLocationDisplay = () => {
+    if (address) {
+      const parts = [address.street, address.district, address.city].filter(Boolean);
+      return parts.length > 0 ? parts.join(', ') : address.fullAddress;
+    }
+    return `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)}`;
   };
 
   return (
@@ -163,11 +222,20 @@ export const MosqueFinderPage = () => {
                   <p className="text-xs text-muted-foreground">
                     {language === 'id' ? 'Lokasimu saat ini' : 'Your current location'}
                   </p>
-                  <p className="text-sm font-medium text-foreground">
-                    {latitude?.toFixed(4)}, {longitude?.toFixed(4)}
+                  <p className="text-sm font-medium text-foreground line-clamp-1">
+                    {addressLoading ? (
+                      <span className="text-muted-foreground">{language === 'id' ? 'Mendapatkan alamat...' : 'Getting address...'}</span>
+                    ) : (
+                      getLocationDisplay()
+                    )}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">🔄 Auto-update</span>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="text-[10px] text-primary">🔄 Auto 5m</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {latitude?.toFixed(4)}, {longitude?.toFixed(4)}
+                  </span>
+                </div>
               </div>
             )}
           </CardContent>
