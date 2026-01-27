@@ -103,9 +103,15 @@ const Auth = () => {
             toast.error(error.message);
           }
         } else {
-          toast.success('Pendaftaran berhasil! Silakan masuk.');
+          // Success - redirect to login page, DO NOT auto-login
+          toast.success('Pendaftaran berhasil! Silakan masuk dengan akun Anda.');
+          // Switch to login mode and clear password fields
           setIsLogin(true);
-          setFormData({ ...formData, password: '', confirmPassword: '' });
+          setFormData({ 
+            ...formData, 
+            password: '', 
+            confirmPassword: '' 
+          });
         }
       }
     } catch (err) {
