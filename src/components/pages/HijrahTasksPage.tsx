@@ -3,25 +3,30 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, Plus, Calendar, TrendingUp, X, Edit3, BookOpen } from "lucide-react";
+import { CheckCircle2, Circle, Plus, Calendar, TrendingUp, X, Edit3, AlertTriangle, Star, Flag } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+// Priority levels
+type Priority = "sangat_penting" | "penting" | "rutin";
 
 interface Task {
   id: string;
   title: string;
   completed: boolean;
   category: "ibadah" | "akhlak" | "ilmu" | "hijrah";
+  priority: Priority;
   isCustom?: boolean;
 }
 
 const initialTasks: Task[] = [
-  { id: "1", title: "Shalat 5 waktu tepat waktu", completed: true, category: "ibadah" },
-  { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: true, category: "ibadah" },
-  { id: "3", title: "Dzikir pagi & petang", completed: false, category: "ibadah" },
-  { id: "4", title: "Istighfar 100x", completed: false, category: "ibadah" },
-  { id: "5", title: "Berbuat baik pada orang tua", completed: false, category: "akhlak" },
-  { id: "6", title: "Jauhi ghibah & gosip", completed: true, category: "hijrah" },
-  { id: "7", title: "Baca hadis 1 hadis", completed: false, category: "ilmu" },
+  { id: "1", title: "Shalat 5 waktu tepat waktu", completed: true, category: "ibadah", priority: "sangat_penting" },
+  { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: true, category: "ibadah", priority: "sangat_penting" },
+  { id: "3", title: "Dzikir pagi & petang", completed: false, category: "ibadah", priority: "penting" },
+  { id: "4", title: "Istighfar 100x", completed: false, category: "ibadah", priority: "penting" },
+  { id: "5", title: "Berbuat baik pada orang tua", completed: false, category: "akhlak", priority: "sangat_penting" },
+  { id: "6", title: "Jauhi ghibah & gosip", completed: true, category: "hijrah", priority: "penting" },
+  { id: "7", title: "Baca hadis 1 hadis", completed: false, category: "ilmu", priority: "rutin" },
 ];
 
 const categoryColors = {
@@ -38,25 +43,48 @@ const categoryLabels = {
   hijrah: "Hijrah",
 };
 
+const priorityLabels: Record<Priority, { label: string; icon: React.ReactNode; color: string }> = {
+  sangat_penting: { label: "Sangat Penting", icon: <AlertTriangle className="h-3 w-3" />, color: "text-destructive" },
+  penting: { label: "Penting", icon: <Star className="h-3 w-3" />, color: "text-primary" },
+  rutin: { label: "Rutin", icon: <Flag className="h-3 w-3" />, color: "text-muted-foreground" },
+};
+
 interface HijrahTasksPageProps {
   onOpenReflection?: () => void;
 }
 
 export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
+  const { language } = useLanguage();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<Task["category"]>("ibadah");
+  const [newTaskPriority, setNewTaskPriority] = useState<Priority>("penting");
 
-  // Auto-sort: completed tasks go to bottom, incomplete to top
+  // Auto-sort: completed tasks go to bottom, incomplete to top, then by priority
+  const sortTasks = (taskList: Task[]) => {
+    return [...taskList].sort((a, b) => {
+      // First sort by completion status
+      if (a.completed !== b.completed) {
+        return Number(a.completed) - Number(b.completed);
+      }
+      // Then sort by priority
+      const priorityOrder: Record<Priority, number> = {
+        sangat_penting: 0,
+        penting: 1,
+        rutin: 2,
+      };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
+  };
+
   const toggleTask = (taskId: string) => {
     setTasks(prev => {
       const updated = prev.map(task =>
         task.id === taskId ? { ...task, completed: !task.completed } : task
       );
-      // Sort: incomplete first, then completed
-      return updated.sort((a, b) => Number(a.completed) - Number(b.completed));
+      return sortTasks(updated);
     });
   };
 
@@ -71,9 +99,10 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
         title: newTaskTitle.trim(),
         completed: false,
         category: newTaskCategory,
+        priority: newTaskPriority,
         isCustom: true,
       };
-      setTasks([...tasks, newTask]);
+      setTasks(sortTasks([...tasks, newTask]));
       setNewTaskTitle("");
       setIsAddingTask(false);
     }
@@ -86,14 +115,23 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const completedCount = tasks.filter(t => t.completed).length;
   const progressValue = (completedCount / tasks.length) * 100;
 
+  // Calculate weekly progress based on daily completion percentage
+  const getDayProgress = (dayOffset: number) => {
+    // For demo, show current day's real progress, others are simulated
+    if (dayOffset === 6) return progressValue;
+    // Simulate past days with realistic data
+    const simulated = [80, 100, 60, 90, 100, 40];
+    return simulated[dayOffset] || 0;
+  };
+
   const weeklyProgress = [
-    { day: "Sen", value: 80 },
-    { day: "Sel", value: 100 },
-    { day: "Rab", value: 60 },
-    { day: "Kam", value: 90 },
-    { day: "Jum", value: 100 },
-    { day: "Sab", value: 40 },
-    { day: "Min", value: progressValue },
+    { day: "Sen", value: getDayProgress(0) },
+    { day: "Sel", value: getDayProgress(1) },
+    { day: "Rab", value: getDayProgress(2) },
+    { day: "Kam", value: getDayProgress(3) },
+    { day: "Jum", value: getDayProgress(4) },
+    { day: "Sab", value: getDayProgress(5) },
+    { day: "Min", value: getDayProgress(6) },
   ];
 
   return (
@@ -114,12 +152,14 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
           </Button>
         </div>
 
-        {/* Weekly Progress */}
+        {/* Weekly Progress Chart */}
         <Card variant="elevated">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Progress Mingguan</span>
+              <span className="text-sm font-semibold text-foreground">
+                {language === 'id' ? 'Progress Mingguan' : 'Weekly Progress'}
+              </span>
             </div>
             <div className="flex justify-between gap-1">
               {weeklyProgress.map((day, index) => (
@@ -154,7 +194,9 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">Hari Ini</span>
+                <span className="text-sm font-semibold text-foreground">
+                  {language === 'id' ? 'Hari Ini' : 'Today'}
+                </span>
               </div>
               <span className="text-lg font-bold text-primary">{completedCount}/{tasks.length}</span>
             </div>
@@ -180,37 +222,70 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
             <Card variant="elevated">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-foreground">Tambah Target Baru</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {language === 'id' ? 'Tambah Target Baru' : 'Add New Goal'}
+                  </h3>
                   <Button variant="ghost" size="iconSm" onClick={() => setIsAddingTask(false)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
                 <Input
-                  placeholder="Contoh: Shalat tahajud setiap malam"
+                  placeholder={language === 'id' ? "Contoh: Shalat tahajud setiap malam" : "Example: Pray tahajud every night"}
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   className="mb-3"
                   autoFocus
                 />
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {Object.entries(categoryLabels).map(([key, label]) => (
-                    <Button
-                      key={key}
-                      variant={newTaskCategory === key ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setNewTaskCategory(key as Task["category"])}
-                    >
-                      {label}
-                    </Button>
-                  ))}
+                
+                {/* Priority Selection */}
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {language === 'id' ? 'Prioritas:' : 'Priority:'}
+                  </p>
+                  <div className="flex gap-2">
+                    {(Object.keys(priorityLabels) as Priority[]).map((priority) => (
+                      <Button
+                        key={priority}
+                        variant={newTaskPriority === priority ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setNewTaskPriority(priority)}
+                        className="flex items-center gap-1"
+                      >
+                        <span className={priorityLabels[priority].color}>
+                          {priorityLabels[priority].icon}
+                        </span>
+                        {priorityLabels[priority].label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Category Selection */}
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {language === 'id' ? 'Kategori:' : 'Category:'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(categoryLabels).map(([key, label]) => (
+                      <Button
+                        key={key}
+                        variant={newTaskCategory === key ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setNewTaskCategory(key as Task["category"])}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setIsAddingTask(false)}>
-                    Batal
+                    {language === 'id' ? 'Batal' : 'Cancel'}
                   </Button>
                   <Button variant="spiritual" className="flex-1" onClick={addTask} disabled={!newTaskTitle.trim()}>
                     <Plus className="h-4 w-4 mr-1" />
-                    Tambah
+                    {language === 'id' ? 'Tambah' : 'Add'}
                   </Button>
                 </div>
               </CardContent>
@@ -232,7 +307,7 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
             size="sm"
             onClick={() => setActiveFilter("all")}
           >
-            Semua
+            {language === 'id' ? 'Semua' : 'All'}
           </Button>
           {Object.entries(categoryLabels).map(([key, label]) => (
             <Button
@@ -263,6 +338,7 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -100 }}
                 transition={{ delay: 0.5 + index * 0.05 }}
+                layout
               >
                 <Card
                   variant="default"
@@ -280,12 +356,20 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
                         <Circle className="h-6 w-6 text-muted-foreground" />
                       )}
                     </motion.div>
-                    <span 
-                      className={`flex-1 text-sm cursor-pointer ${task.completed ? "line-through text-muted-foreground" : "text-foreground"}`}
-                      onClick={() => toggleTask(task.id)}
-                    >
-                      {task.title}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span 
+                        className={`text-sm cursor-pointer block ${task.completed ? "line-through text-muted-foreground" : "text-foreground"}`}
+                        onClick={() => toggleTask(task.id)}
+                      >
+                        {task.title}
+                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-[10px] flex items-center gap-0.5 ${priorityLabels[task.priority].color}`}>
+                          {priorityLabels[task.priority].icon}
+                          {priorityLabels[task.priority].label}
+                        </span>
+                      </div>
+                    </div>
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${categoryColors[task.category].bg} ${categoryColors[task.category].text}`}>
                       {categoryLabels[task.category]}
                     </span>
@@ -323,12 +407,16 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
               📝
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-foreground">Refleksi Diri</h3>
-              <p className="text-xs text-muted-foreground">Tulis perasaan dan pelajaran hari ini</p>
+              <h3 className="text-sm font-semibold text-foreground">
+                {language === 'id' ? 'Refleksi Diri' : 'Self Reflection'}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {language === 'id' ? 'Tulis perasaan dan pelajaran hari ini' : 'Write your feelings and lessons today'}
+              </p>
             </div>
             <Button variant="ghost" size="sm">
               <Edit3 className="h-4 w-4 mr-1" />
-              Tulis
+              {language === 'id' ? 'Tulis' : 'Write'}
             </Button>
           </CardContent>
         </Card>

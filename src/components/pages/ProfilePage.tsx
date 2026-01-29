@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, Camera, User, Mail, Phone, Globe, Palette, Bell, 
-  Check, LogOut, Loader2
+  Check, LogOut, Loader2, HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,35 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNotifications } from "@/hooks/useNotifications";
 import { toast } from "sonner";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+const faqs = [
+  {
+    question: "Bagaimana cara memulai konsultasi?",
+    answer: "Pilih ustadz/ustadzah yang tersedia, pilih topik konsultasi yang sesuai dengan masalah Anda, lalu klik tombol 'Hubungi via WhatsApp'. Pesan akan otomatis terformat dengan topik yang dipilih."
+  },
+  {
+    question: "Apakah identitas saya terjaga?",
+    answer: "Ya, 100% anonim. Anda bisa menggunakan nama samaran saat berkonsultasi. Kami tidak menyimpan data pribadi Anda."
+  },
+  {
+    question: "Berapa biaya konsultasi?",
+    answer: "Konsultasi melalui aplikasi Istiqamah sepenuhnya gratis. Ustadz/ustadzah kami mengabdikan diri untuk membantu umat."
+  },
+  {
+    question: "Bagaimana cara menambah target hijrah?",
+    answer: "Di halaman 'Target Hijrah', klik tombol + di pojok kanan atas. Masukkan nama target dan pilih kategori yang sesuai."
+  },
+  {
+    question: "Bagaimana cara menemukan masjid terdekat?",
+    answer: "Buka halaman 'Masjid', aplikasi akan meminta izin lokasi. Setelah diizinkan, peta akan menampilkan masjid terdekat."
+  },
+];
 
 interface ProfilePageProps {
   onBack: () => void;
@@ -387,11 +416,44 @@ export const ProfilePage = ({ onBack }: ProfilePageProps) => {
           </Card>
         </motion.div>
 
-        {/* Logout */}
+        {/* FAQ Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
+        >
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-4">
+                <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                <h3 className="font-semibold text-foreground">
+                  {language === 'id' ? 'Bantuan & FAQ' : 'Help & FAQ'}
+                </h3>
+              </div>
+              
+              <Accordion type="single" collapsible className="space-y-2">
+                {faqs.map((faq, index) => (
+                  <AccordionItem key={index} value={`faq-${index}`} className="border-none">
+                    <div className="bg-muted rounded-lg">
+                      <AccordionTrigger className="px-3 py-2 hover:no-underline text-left">
+                        <span className="text-xs font-medium text-foreground">{faq.question}</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-3 pb-3">
+                        <p className="text-xs text-muted-foreground">{faq.answer}</p>
+                      </AccordionContent>
+                    </div>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Logout */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
         >
           <Button
             variant="outline"

@@ -4,7 +4,7 @@ import { DailyQuote } from "@/components/DailyQuote";
 import { QuickActions } from "@/components/QuickActions";
 import { DailyProgress } from "@/components/DailyProgress";
 import { VideoRecommendations } from "@/components/VideoRecommendations";
-import { HijriCalendarWidget } from "@/components/HijriCalendarWidget";
+import { DualCalendar } from "@/components/DualCalendar";
 import heroMosque from "@/assets/hero-mosque.jpg";
 
 interface HomePageProps {
@@ -61,14 +61,14 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: Hom
         </motion.div>
       </motion.div>
 
-      {/* Hijri Calendar Widget */}
+      {/* Dual Calendar Widget */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="px-5 mb-6"
       >
-        <HijriCalendarWidget />
+        <DualCalendar />
       </motion.div>
 
       {/* Daily Quote */}

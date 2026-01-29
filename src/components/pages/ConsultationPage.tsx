@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lock, MessageCircle, User, Clock, Circle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Lock, MessageCircle, User, Clock, Circle, Search, X } from "lucide-react";
 import { useState, useMemo } from "react";
 import {
   Select,
@@ -11,20 +12,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { consultants, topics, isConsultantAvailable, getAvailabilityText } from "@/data/consultants";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-interface ConsultationPageProps {
-  onOpenFAQ?: () => void;
-}
-
-export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
+export const ConsultationPage = () => {
+  const { language } = useLanguage();
   const [selectedTopics, setSelectedTopics] = useState<Record<string, string>>({});
   const [filterTopic, setFilterTopic] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Filter consultants by topic
+  // Filter consultants by topic and search query
   const filteredConsultants = useMemo(() => {
-    if (filterTopic === "all") return consultants;
-    return consultants.filter((c) => c.topics.includes(filterTopic));
-  }, [filterTopic]);
+    let result = consultants;
+    
+    // Filter by topic
+    if (filterTopic !== "all") {
+      result = result.filter((c) => c.topics.includes(filterTopic));
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((c) => 
+        c.name.toLowerCase().includes(query) ||
+        c.specialty.toLowerCase().includes(query) ||
+        c.bio.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
+  }, [filterTopic, searchQuery]);
 
   const handleWhatsAppContact = (consultant: typeof consultants[0]) => {
     const selectedTopic = selectedTopics[consultant.id];
@@ -38,6 +54,10 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
     window.open(whatsappUrl, "_blank");
   };
 
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
+
   return (
     <div className="min-h-screen pb-32 gradient-calm">
       {/* Header */}
@@ -46,9 +66,11 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
         animate={{ opacity: 1, y: 0 }}
         className="px-5 pt-12 pb-6"
       >
-        <h1 className="text-2xl font-bold text-foreground mb-1">Konsultasi</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-1">
+          {language === 'id' ? 'Konsultasi' : 'Consultation'}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Bicara dengan ustadz/ustadzah secara anonim
+          {language === 'id' ? 'Bicara dengan ustadz/ustadzah secara anonim' : 'Talk to scholars anonymously'}
         </p>
       </motion.div>
 
@@ -57,7 +79,7 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="px-5 mb-6"
+        className="px-5 mb-4"
       >
         <Card variant="spiritual">
           <CardContent className="p-4 flex items-center gap-3">
@@ -65,13 +87,43 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
               <Lock className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-foreground">100% Anonim & Rahasia</h3>
+              <h3 className="text-sm font-semibold text-foreground">
+                {language === 'id' ? '100% Anonim & Rahasia' : '100% Anonymous & Confidential'}
+              </h3>
               <p className="text-xs text-muted-foreground">
-                Identitasmu terjaga, bicaralah dengan tenang
+                {language === 'id' ? 'Identitasmu terjaga, bicaralah dengan tenang' : 'Your identity is protected, speak freely'}
               </p>
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* Search Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="px-5 mb-4"
+      >
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={language === 'id' ? "Cari ustadz/ustadzah..." : "Search scholars..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="iconSm"
+              className="absolute right-1 top-1/2 -translate-y-1/2"
+              onClick={clearSearch}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </motion.div>
 
       {/* Topic Filter */}
@@ -81,7 +133,9 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
         transition={{ delay: 0.2 }}
         className="px-5 mb-6"
       >
-        <h2 className="text-sm font-semibold text-foreground mb-3">Filter Topik</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-3">
+          {language === 'id' ? 'Filter Topik' : 'Filter by Topic'}
+        </h2>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <button
             onClick={() => setFilterTopic("all")}
@@ -91,7 +145,7 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                 : "bg-card text-foreground border border-border hover:border-primary/50"
             }`}
           >
-            📚 Semua
+            📚 {language === 'id' ? 'Semua' : 'All'}
           </button>
           {topics.map((topic) => (
             <button
@@ -118,11 +172,31 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
         className="px-5"
       >
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground">Konsultan Tersedia</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            {language === 'id' ? 'Konsultan Tersedia' : 'Available Consultants'}
+          </h2>
           <span className="text-xs text-muted-foreground">
-            {filteredConsultants.length} ustadz/ah
+            {filteredConsultants.length} {language === 'id' ? 'ustadz/ah' : 'scholars'}
           </span>
         </div>
+
+        {/* No Results Message */}
+        {filteredConsultants.length === 0 && (
+          <Card className="bg-card border-border">
+            <CardContent className="p-6 text-center">
+              <Search className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-sm text-muted-foreground">
+                {language === 'id' 
+                  ? `Tidak ditemukan ustadz dengan pencarian "${searchQuery}"`
+                  : `No scholars found for "${searchQuery}"`}
+              </p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={clearSearch}>
+                {language === 'id' ? 'Hapus Pencarian' : 'Clear Search'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-3">
           {filteredConsultants.map((consultant, index) => {
             const isAvailable = isConsultantAvailable(consultant);
@@ -139,7 +213,6 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                     <div className="flex items-start gap-3 mb-3">
                       <div className="h-14 w-14 rounded-full gradient-hero flex items-center justify-center text-primary-foreground relative">
                         <User className="h-7 w-7" />
-                        {/* Online Status Indicator */}
                         <div
                           className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-card flex items-center justify-center ${
                             isAvailable 
@@ -163,7 +236,6 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                           {consultant.specialty}
                         </p>
                         
-                        {/* Availability Hours */}
                         <div className="flex items-center gap-1 mb-1">
                           <Clock className="h-3 w-3 text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">
@@ -180,27 +252,26 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                           </span>
                         </div>
 
-                        {/* Rating */}
                         <div className="flex items-center gap-1">
                           <span className="text-yellow-500">★</span>
                           <span className="text-xs font-medium text-foreground">
                             {consultant.rating}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            ({consultant.reviews} ulasan)
+                            ({consultant.reviews} {language === 'id' ? 'ulasan' : 'reviews'})
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Bio */}
                     <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
                       {consultant.bio}
                     </p>
 
-                    {/* Topic Selection */}
                     <div className="mb-3">
-                      <p className="text-xs text-muted-foreground mb-2">Pilih Topik:</p>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {language === 'id' ? 'Pilih Topik:' : 'Select Topic:'}
+                      </p>
                       <Select
                         value={selectedTopics[consultant.id] || ""}
                         onValueChange={(value) =>
@@ -211,7 +282,7 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                         }
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Pilih topik konsultasi..." />
+                          <SelectValue placeholder={language === 'id' ? "Pilih topik konsultasi..." : "Choose consultation topic..."} />
                         </SelectTrigger>
                         <SelectContent>
                           {topics
@@ -228,7 +299,6 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                       </Select>
                     </div>
 
-                    {/* WhatsApp Button */}
                     <Button
                       variant="spiritual"
                       className="w-full"
@@ -236,7 +306,7 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
                       disabled={!selectedTopics[consultant.id]}
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
-                      Hubungi via WhatsApp
+                      {language === 'id' ? 'Hubungi via WhatsApp' : 'Contact via WhatsApp'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -244,28 +314,6 @@ export const ConsultationPage = ({ onOpenFAQ }: ConsultationPageProps) => {
             );
           })}
         </div>
-      </motion.div>
-
-      {/* FAQ Link */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-        className="px-5 mt-6"
-      >
-        <Card
-          variant="hope"
-          className="cursor-pointer hover:shadow-glow transition-all"
-          onClick={onOpenFAQ}
-        >
-          <CardContent className="p-4 flex items-center gap-3">
-            <span className="text-2xl">❓</span>
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-foreground">Bantuan & FAQ</h3>
-              <p className="text-xs text-muted-foreground">Lihat FAQ atau kirim feedback</p>
-            </div>
-          </CardContent>
-        </Card>
       </motion.div>
     </div>
   );

@@ -57,11 +57,7 @@ const Index = () => {
           />
         );
       case "consult":
-        return (
-          <ConsultationPage 
-            onOpenFAQ={() => setShowFAQ(true)} 
-          />
-        );
+        return <ConsultationPage />;
       case "mosque":
         return <MosqueFinderPage />;
       default:
