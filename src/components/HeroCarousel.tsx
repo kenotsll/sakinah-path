@@ -9,9 +9,11 @@ import heroMosque from "@/assets/hero-mosque.jpg";
 interface BookmarkedAyah {
   surahNumber: number;
   surahName: string;
+  surahArabic?: string;
   ayahNumber: number;
   text: string;
   translation: string;
+  showOnCarousel?: boolean;
 }
 
 interface HeroCarouselProps {
@@ -162,61 +164,63 @@ export const HeroCarousel = ({ onNavigate, onOpenAyah }: HeroCarouselProps) => {
         );
 
       case 2:
-        // Slide 3: Bookmarked Ayahs (max 3, with translation)
+        // Slide 3: Featured Ayah (1 large ayah that has showOnCarousel = true)
+        const featuredAyah = bookmarkedAyahs.find(a => a.showOnCarousel);
+        
         return (
-          <div className="h-full w-full bg-gradient-to-br from-accent/20 via-accent/10 to-primary/20 p-4 flex flex-col">
-            <div className="flex items-center gap-2 mb-2">
-              <Bookmark className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-foreground">
-                {language === 'id' ? 'Ayat Tersimpan' : 'Bookmarked Verses'}
-              </h3>
-              <span className="text-xs text-muted-foreground ml-auto">
-                {bookmarkedAyahs.length} ayat
-              </span>
-            </div>
-            {bookmarkedAyahs.length > 0 ? (
-              <div className="flex-1 overflow-hidden space-y-1.5">
-                {bookmarkedAyahs.slice(0, 3).map((ayah, idx) => (
-                  <div 
-                    key={idx} 
-                    className="bg-card/60 rounded-lg p-2 cursor-pointer hover:bg-card/80 transition-colors"
-                    onClick={() => onOpenAyah?.(ayah.surahNumber, ayah.ayahNumber)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-arabic text-xs text-foreground text-right leading-relaxed line-clamp-1" dir="rtl">
-                          {ayah.text}
-                        </p>
-                        <p className="text-[9px] text-muted-foreground line-clamp-1 mt-0.5">
-                          {ayah.translation}
-                        </p>
-                      </div>
-                      <span className="text-[9px] text-primary shrink-0">
-                        {ayah.surahName}:{ayah.ayahNumber}
-                      </span>
-                    </div>
+          <div 
+            className="h-full w-full bg-gradient-to-br from-primary/20 via-accent/10 to-primary/10 p-4 flex flex-col cursor-pointer"
+            onClick={() => featuredAyah 
+              ? onOpenAyah?.(featuredAyah.surahNumber, featuredAyah.ayahNumber)
+              : onNavigate?.("quran")
+            }
+          >
+            {featuredAyah ? (
+              <>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Bookmark className="h-4 w-4 text-primary fill-primary" />
+                    <span className="text-xs font-medium text-primary">
+                      {featuredAyah.surahName} : {featuredAyah.ayahNumber}
+                    </span>
                   </div>
-                ))}
-                {bookmarkedAyahs.length > 3 && (
-                  <button 
-                    onClick={() => onNavigate?.("quran")}
-                    className="text-[10px] text-primary hover:underline w-full text-center pt-1"
-                  >
-                    +{bookmarkedAyahs.length - 3} {language === 'id' ? 'ayat lainnya' : 'more verses'}
-                  </button>
-                )}
-              </div>
+                  <span className="font-arabic text-sm text-primary">
+                    {featuredAyah.surahArabic || ''}
+                  </span>
+                </div>
+                
+                {/* Arabic Text - Large */}
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="font-arabic text-xl text-foreground text-center leading-loose line-clamp-3" dir="rtl">
+                    {featuredAyah.text}
+                  </p>
+                </div>
+                
+                {/* Translation */}
+                <p className="text-xs text-muted-foreground text-center line-clamp-2 mt-2">
+                  {featuredAyah.translation}
+                </p>
+              </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <Bookmark className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                <p className="text-xs text-muted-foreground">
+                <Bookmark className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                <p className="text-sm text-muted-foreground font-medium">
                   {language === 'id' 
-                    ? 'Belum ada ayat tersimpan' 
-                    : 'No bookmarked verses yet'}
+                    ? 'Belum ada ayat ditampilkan' 
+                    : 'No featured verse yet'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {language === 'id'
+                    ? 'Pilih "Tampilkan di Beranda" saat menyimpan ayat'
+                    : 'Choose "Show on Home" when saving a verse'}
                 </p>
                 <button 
-                  onClick={() => onNavigate?.("quran")}
-                  className="text-xs text-primary mt-1 hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate?.("quran");
+                  }}
+                  className="text-xs text-primary mt-2 hover:underline"
                 >
                   {language === 'id' ? 'Baca Al-Qur\'an →' : 'Read Quran →'}
                 </button>

@@ -16,7 +16,8 @@ import {
   Loader2,
   SkipForward,
   SkipBack,
-  VolumeX
+  VolumeX,
+  X
 } from "lucide-react";
 import { useQuran, Surah, SurahDetail, Ayah } from "@/hooks/useQuran";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -202,9 +203,11 @@ const BOOKMARKS_KEY = 'istiqamah_bookmarks';
 interface BookmarkedAyah {
   surahNumber: number;
   surahName: string;
+  surahArabic: string;
   ayahNumber: number;
   text: string;
   translation: string;
+  showOnCarousel: boolean;
 }
 
 const getBookmarks = (): BookmarkedAyah[] => {
@@ -226,11 +229,35 @@ const saveBookmarks = (bookmarks: BookmarkedAyah[]) => {
   }
 };
 
+// Get bookmarks grouped by surah
+const getBookmarksBySurah = (bookmarks: BookmarkedAyah[]) => {
+  const grouped: Record<number, { surahName: string; surahArabic: string; ayahs: BookmarkedAyah[] }> = {};
+  
+  bookmarks.forEach(b => {
+    if (!grouped[b.surahNumber]) {
+      grouped[b.surahNumber] = {
+        surahName: b.surahName,
+        surahArabic: b.surahArabic || '',
+        ayahs: [],
+      };
+    }
+    grouped[b.surahNumber].ayahs.push(b);
+  });
+
+  // Sort ayahs within each surah
+  Object.values(grouped).forEach(g => {
+    g.ayahs.sort((a, b) => a.ayahNumber - b.ayahNumber);
+  });
+
+  return grouped;
+};
+
 // Ayah Card Component with Audio
 const AyahCard = ({ 
   ayah, 
   surahNumber,
   surahName,
+  surahArabic,
   isPlaying,
   onPlay,
   onPause,
@@ -238,12 +265,15 @@ const AyahCard = ({
   ayah: Ayah; 
   surahNumber: number;
   surahName: string;
+  surahArabic: string;
   isPlaying: boolean;
   onPlay: () => void;
   onPause: () => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showBookmarkOptions, setShowBookmarkOptions] = useState(false);
+  const { language } = useLanguage();
 
   // Check if this ayah is bookmarked on mount
   useEffect(() => {
@@ -254,94 +284,198 @@ const AyahCard = ({
     setIsBookmarked(found);
   }, [surahNumber, ayah.numberInSurah]);
 
-  const toggleBookmark = () => {
+  const handleBookmarkClick = () => {
     const bookmarks = getBookmarks();
     const existingIndex = bookmarks.findIndex(
       b => b.surahNumber === surahNumber && b.ayahNumber === ayah.numberInSurah
     );
 
     if (existingIndex >= 0) {
-      // Remove bookmark
+      // Remove bookmark directly
       bookmarks.splice(existingIndex, 1);
       setIsBookmarked(false);
+      saveBookmarks(bookmarks);
     } else {
-      // Add bookmark
-      bookmarks.push({
-        surahNumber,
-        surahName,
-        ayahNumber: ayah.numberInSurah,
-        text: ayah.text,
-        translation: ayah.translation || '',
-      });
-      setIsBookmarked(true);
+      // Show options dialog
+      setShowBookmarkOptions(true);
     }
+  };
+
+  const saveWithOption = (showOnCarousel: boolean) => {
+    const bookmarks = getBookmarks();
+    
+    // If showing on carousel, remove any existing carousel bookmark first
+    if (showOnCarousel) {
+      const existingCarouselIndex = bookmarks.findIndex(b => b.showOnCarousel);
+      if (existingCarouselIndex >= 0) {
+        bookmarks[existingCarouselIndex].showOnCarousel = false;
+      }
+    }
+    
+    bookmarks.push({
+      surahNumber,
+      surahName,
+      surahArabic,
+      ayahNumber: ayah.numberInSurah,
+      text: ayah.text,
+      translation: ayah.translation || '',
+      showOnCarousel,
+    });
+    setIsBookmarked(true);
     saveBookmarks(bookmarks);
+    setShowBookmarkOptions(false);
   };
 
   return (
-    <Card className="bg-card border-border overflow-hidden">
-      <CardContent className="p-4 space-y-3">
-        {/* Ayah Number & Controls */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-              {ayah.numberInSurah}
-            </span>
-            <span className="text-[10px] text-muted-foreground">
-              Juz {ayah.juz} • Hal {ayah.page}
-            </span>
+    <>
+      <Card className="bg-card border-border overflow-hidden">
+        <CardContent className="p-4 space-y-3">
+          {/* Ayah Number & Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                {ayah.numberInSurah}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                Juz {ayah.juz} • Hal {ayah.page}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-8 w-8 ${isPlaying ? 'text-primary bg-primary/10' : ''}`}
+                onClick={isPlaying ? onPause : onPlay}
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4 text-primary" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-8 w-8 ${isBookmarked ? 'text-primary bg-primary/10' : ''}`}
+                onClick={handleBookmarkClick}
+              >
+                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-primary' : ''}`} />
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={`h-8 w-8 ${isPlaying ? 'text-primary bg-primary/10' : ''}`}
-              onClick={isPlaying ? onPause : onPlay}
-            >
-              {isPlaying ? (
-                <Pause className="h-4 w-4 text-primary" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={`h-8 w-8 ${isBookmarked ? 'text-primary bg-primary/10' : ''}`}
-              onClick={toggleBookmark}
-            >
-              <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-primary' : ''}`} />
-            </Button>
-          </div>
-        </div>
 
-        {/* Arabic Text */}
-        <p className="font-arabic text-2xl text-foreground text-right leading-loose" dir="rtl">
-          {ayah.text}
-        </p>
-
-        {/* Translation */}
-        <div className="pt-2 border-t border-border">
-          <p className={`text-sm text-muted-foreground leading-relaxed ${!expanded && 'line-clamp-2'}`}>
-            {ayah.translation}
+          {/* Arabic Text */}
+          <p className="font-arabic text-2xl text-foreground text-right leading-loose" dir="rtl">
+            {ayah.text}
           </p>
-          {ayah.translation && ayah.translation.length > 120 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="p-0 h-auto mt-1 text-xs text-primary"
-              onClick={() => setExpanded(!expanded)}
+
+          {/* Translation */}
+          <div className="pt-2 border-t border-border">
+            <p className={`text-sm text-muted-foreground leading-relaxed ${!expanded && 'line-clamp-2'}`}>
+              {ayah.translation}
+            </p>
+            {ayah.translation && ayah.translation.length > 120 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="p-0 h-auto mt-1 text-xs text-primary"
+                onClick={() => setExpanded(!expanded)}
+              >
+                {expanded ? (
+                  <>Sembunyikan <ChevronUp className="h-3 w-3 ml-1" /></>
+                ) : (
+                  <>Selengkapnya <ChevronDown className="h-3 w-3 ml-1" /></>
+                )}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bookmark Options Dialog */}
+      <AnimatePresence>
+        {showBookmarkOptions && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-5"
+            onClick={() => setShowBookmarkOptions(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border rounded-2xl p-5 w-full max-w-sm shadow-lg"
+              onClick={e => e.stopPropagation()}
             >
-              {expanded ? (
-                <>Sembunyikan <ChevronUp className="h-3 w-3 ml-1" /></>
-              ) : (
-                <>Selengkapnya <ChevronDown className="h-3 w-3 ml-1" /></>
-              )}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {language === 'id' ? 'Simpan Ayat' : 'Save Verse'}
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {language === 'id' 
+                  ? 'Pilih cara menyimpan ayat ini:'
+                  : 'Choose how to save this verse:'}
+              </p>
+              
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start h-auto py-3 px-4"
+                  onClick={() => saveWithOption(true)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Bookmark className="h-5 w-5 text-primary fill-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-foreground">
+                        {language === 'id' ? 'Tampilkan di Beranda' : 'Show on Home'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'id' 
+                          ? 'Ayat akan ditampilkan besar di carousel beranda'
+                          : 'Verse will be displayed large on home carousel'}
+                      </p>
+                    </div>
+                  </div>
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start h-auto py-3 px-4"
+                  onClick={() => saveWithOption(false)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <Bookmark className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-foreground">
+                        {language === 'id' ? 'Simpan Saja' : 'Just Save'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'id' 
+                          ? 'Ayat tersimpan di menu Tersimpan'
+                          : 'Verse saved in Saved menu'}
+                      </p>
+                    </div>
+                  </div>
+                </Button>
+              </div>
+
+              <Button 
+                variant="ghost" 
+                className="w-full mt-3"
+                onClick={() => setShowBookmarkOptions(false)}
+              >
+                {language === 'id' ? 'Batal' : 'Cancel'}
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
@@ -568,6 +702,7 @@ const SurahDetailView = ({
               ayah={ayah} 
               surahNumber={surah.number}
               surahName={surah.englishName}
+              surahArabic={surah.name}
               isPlaying={playingAyahId === ayah.number}
               onPlay={() => handlePlaySingleAyah(ayah)}
               onPause={() => stopGlobalAudio()}
@@ -601,6 +736,8 @@ export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageP
   const [searchQuery, setSearchQuery] = useState("");
   const [lastRead, setLastRead] = useState<LastRead | null>(null);
   const [scrollToAyah, setScrollToAyah] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'surah' | 'tersimpan'>('surah');
+  const [bookmarks, setBookmarks] = useState<BookmarkedAyah[]>([]);
 
   useEffect(() => {
     fetchSurahs();
@@ -608,7 +745,18 @@ export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageP
     stopGlobalAudio();
     // Load last read
     setLastRead(getLastRead());
+    // Load bookmarks
+    setBookmarks(getBookmarks());
   }, [fetchSurahs]);
+
+  // Listen for bookmark updates
+  useEffect(() => {
+    const handleBookmarkUpdate = () => {
+      setBookmarks(getBookmarks());
+    };
+    window.addEventListener('bookmarks-updated', handleBookmarkUpdate);
+    return () => window.removeEventListener('bookmarks-updated', handleBookmarkUpdate);
+  }, []);
 
   // Handle initial navigation from carousel bookmark
   useEffect(() => {
@@ -627,10 +775,11 @@ export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageP
   }, []);
 
   const filteredSurahs = searchSurahs(searchQuery);
+  const bookmarksBySurah = getBookmarksBySurah(bookmarks);
 
-  const handleSelectSurah = (surahNumber: number) => {
+  const handleSelectSurah = (surahNumber: number, ayahNumber?: number) => {
     stopGlobalAudio();
-    setScrollToAyah(null);
+    setScrollToAyah(ayahNumber || null);
     fetchSurahDetail(surahNumber);
   };
 
@@ -640,6 +789,13 @@ export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageP
     setLastRead(getLastRead());
     setScrollToAyah(null);
     clearCurrentSurah();
+  };
+
+  const handleRemoveBookmark = (surahNumber: number, ayahNumber: number) => {
+    const updated = bookmarks.filter(
+      b => !(b.surahNumber === surahNumber && b.ayahNumber === ayahNumber)
+    );
+    saveBookmarks(updated);
   };
 
   if (currentSurah) {
@@ -665,6 +821,33 @@ export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageP
             </p>
           </div>
         </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2">
+          <Button
+            variant={activeTab === 'surah' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveTab('surah')}
+            className="flex-1"
+          >
+            <Book className="h-4 w-4 mr-2" />
+            Surah
+          </Button>
+          <Button
+            variant={activeTab === 'tersimpan' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveTab('tersimpan')}
+            className="flex-1"
+          >
+            <Bookmark className="h-4 w-4 mr-2" />
+            {language === 'id' ? 'Tersimpan' : 'Saved'}
+            {bookmarks.length > 0 && (
+              <span className="ml-1.5 h-5 w-5 rounded-full bg-primary-foreground/20 text-xs flex items-center justify-center">
+                {bookmarks.length}
+              </span>
+            )}
+          </Button>
+        </div>
       </motion.div>
 
       {/* Loading State */}
@@ -684,15 +867,112 @@ export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageP
         </div>
       )}
 
-      {/* Surah List with Last Read */}
-      {surahs.length > 0 && (
-        <SurahList
-          surahs={filteredSurahs}
-          onSelect={handleSelectSurah}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          lastRead={lastRead}
-        />
+      {/* Tab Content */}
+      {activeTab === 'surah' ? (
+        /* Surah List with Last Read */
+        surahs.length > 0 && (
+          <SurahList
+            surahs={filteredSurahs}
+            onSelect={handleSelectSurah}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            lastRead={lastRead}
+          />
+        )
+      ) : (
+        /* Bookmarks Tab */
+        <div className="px-5 pb-32">
+          {bookmarks.length === 0 ? (
+            <div className="text-center py-20">
+              <Bookmark className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {language === 'id' 
+                  ? 'Belum ada ayat tersimpan' 
+                  : 'No saved verses yet'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {language === 'id'
+                  ? 'Ketuk ikon bookmark di ayat untuk menyimpan'
+                  : 'Tap the bookmark icon on a verse to save'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(bookmarksBySurah).map(([surahNum, group]) => (
+                <motion.div
+                  key={surahNum}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className="bg-card border-border overflow-hidden">
+                    <CardContent className="p-0">
+                      {/* Surah Header */}
+                      <div 
+                        className="p-4 bg-primary/5 border-b border-border flex items-center justify-between cursor-pointer hover:bg-primary/10 transition-colors"
+                        onClick={() => handleSelectSurah(Number(surahNum))}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <span className="text-sm font-bold text-primary">{surahNum}</span>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">{group.surahName}</h3>
+                            <p className="text-xs text-muted-foreground">
+                              {group.ayahs.length} {language === 'id' ? 'ayat tersimpan' : 'verses saved'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="font-arabic text-lg text-primary">{group.surahArabic}</span>
+                      </div>
+
+                      {/* Saved Ayahs */}
+                      <div className="divide-y divide-border">
+                        {group.ayahs.map((ayah) => (
+                          <div 
+                            key={`${ayah.surahNumber}-${ayah.ayahNumber}`}
+                            className="p-4 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div 
+                                className="flex-1 cursor-pointer"
+                                onClick={() => handleSelectSurah(ayah.surahNumber, ayah.ayahNumber)}
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                                    {ayah.ayahNumber}
+                                  </span>
+                                  {ayah.showOnCarousel && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary">
+                                      {language === 'id' ? 'Di Beranda' : 'On Home'}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="font-arabic text-lg text-foreground text-right leading-relaxed line-clamp-2 mb-2" dir="rtl">
+                                  {ayah.text}
+                                </p>
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                  {ayah.translation}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleRemoveBookmark(ayah.surahNumber, ayah.ayahNumber)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Loading Surah Detail */}
