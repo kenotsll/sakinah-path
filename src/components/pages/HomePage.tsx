@@ -28,9 +28,6 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCal
     onNavigate(tabMap[actionId] || "home");
   };
 
-  // Sample bookmarked ayahs (will be connected to database later)
-  const bookmarkedAyahs: { surah: string; ayah: number; text: string }[] = [];
-
   return (
     <div className="min-h-screen pb-32 gradient-calm">
       <Header onOpenProfile={onOpenProfile} onOpenNotifications={onOpenNotifications} />
@@ -40,10 +37,7 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCal
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <HeroCarousel 
-          bookmarkedAyahs={bookmarkedAyahs}
-          onNavigate={onNavigate}
-        />
+        <HeroCarousel onNavigate={onNavigate} />
       </motion.div>
 
       {/* Calendar Widget */}
