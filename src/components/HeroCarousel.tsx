@@ -3,20 +3,58 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Clock, Bookmark, Play } from "lucide-react";
 import { usePrayerTimes } from "@/hooks/usePrayerTimes";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { videoDatabase } from "@/data/videos";
 import heroMosque from "@/assets/hero-mosque.jpg";
 
+interface BookmarkedAyah {
+  surah: string;
+  surahNumber: number;
+  ayah: number;
+  text: string;
+  translation?: string;
+}
+
 interface HeroCarouselProps {
-  bookmarkedAyahs?: { surah: string; ayah: number; text: string }[];
   onNavigate?: (tab: string) => void;
 }
 
-export const HeroCarousel = ({ bookmarkedAyahs = [], onNavigate }: HeroCarouselProps) => {
+export const HeroCarousel = ({ onNavigate }: HeroCarouselProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [userInteracted, setUserInteracted] = useState(false);
+  const [bookmarkedAyahs, setBookmarkedAyahs] = useState<BookmarkedAyah[]>([]);
   const { times, location } = usePrayerTimes();
   const { language } = useLanguage();
 
   const totalSlides = 4;
+
+  // Load bookmarks from localStorage
+  useEffect(() => {
+    const loadBookmarks = () => {
+      const saved = localStorage.getItem('istiqamah_bookmarks');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setBookmarkedAyahs(parsed);
+        } catch (e) {
+          console.error('Error parsing bookmarks:', e);
+        }
+      }
+    };
+    
+    loadBookmarks();
+    
+    // Listen for storage changes
+    const handleStorageChange = () => loadBookmarks();
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom event for same-tab updates
+    window.addEventListener('bookmarks-updated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('bookmarks-updated', handleStorageChange);
+    };
+  }, []);
 
   // Auto-advance slides every 5 seconds (only if user hasn't interacted)
   useEffect(() => {
@@ -54,11 +92,8 @@ export const HeroCarousel = ({ bookmarkedAyahs = [], onNavigate }: HeroCarouselP
       ]
     : [];
 
-  // Sample video data
-  const latestVideo = {
-    title: language === 'id' ? "Panduan Taubat Nasuha" : "Guide to Sincere Repentance",
-    thumbnail: heroMosque,
-  };
+  // Get latest video from database
+  const latestVideo = videoDatabase[0];
 
   const slideVariants = {
     enter: (direction: number) => ({
@@ -134,11 +169,18 @@ export const HeroCarousel = ({ bookmarkedAyahs = [], onNavigate }: HeroCarouselP
               <h3 className="font-semibold text-foreground">
                 {language === 'id' ? 'Ayat Tersimpan' : 'Bookmarked Verses'}
               </h3>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {bookmarkedAyahs.length} ayat
+              </span>
             </div>
             {bookmarkedAyahs.length > 0 ? (
               <div className="flex-1 overflow-hidden space-y-2">
                 {bookmarkedAyahs.slice(0, 2).map((ayah, idx) => (
-                  <div key={idx} className="bg-card/60 rounded-lg p-2">
+                  <div 
+                    key={idx} 
+                    className="bg-card/60 rounded-lg p-2 cursor-pointer hover:bg-card/80 transition-colors"
+                    onClick={() => onNavigate?.("quran")}
+                  >
                     <p className="font-arabic text-sm text-foreground text-right leading-relaxed line-clamp-1" dir="rtl">
                       {ayah.text}
                     </p>
@@ -147,6 +189,14 @@ export const HeroCarousel = ({ bookmarkedAyahs = [], onNavigate }: HeroCarouselP
                     </p>
                   </div>
                 ))}
+                {bookmarkedAyahs.length > 2 && (
+                  <button 
+                    onClick={() => onNavigate?.("quran")}
+                    className="text-xs text-primary hover:underline w-full text-center"
+                  >
+                    +{bookmarkedAyahs.length - 2} {language === 'id' ? 'ayat lainnya' : 'more verses'}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -168,7 +218,7 @@ export const HeroCarousel = ({ bookmarkedAyahs = [], onNavigate }: HeroCarouselP
         );
 
       case 3:
-        // Slide 4: Latest Video
+        // Slide 4: Latest Video from database
         return (
           <div className="h-full w-full relative">
             <img
@@ -179,19 +229,27 @@ export const HeroCarousel = ({ bookmarkedAyahs = [], onNavigate }: HeroCarouselP
             <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/30 to-transparent" />
             <div className="absolute inset-0 flex items-center justify-center">
               <button 
-                onClick={() => onNavigate?.("videos")}
+                onClick={() => window.open(latestVideo.youtubeUrl, '_blank')}
                 className="h-12 w-12 rounded-full bg-primary/90 flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
               >
                 <Play className="h-5 w-5 text-primary-foreground ml-0.5" />
               </button>
             </div>
             <div className="absolute bottom-4 left-4 right-4">
-              <p className="text-xs text-primary-foreground/70 mb-1">
-                {language === 'id' ? 'Video Terbaru' : 'Latest Video'}
-              </p>
-              <h3 className="text-sm font-semibold text-primary-foreground">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] text-primary-foreground/80 bg-primary/60 px-2 py-0.5 rounded-full">
+                  {latestVideo.category}
+                </span>
+                <span className="text-[10px] text-primary-foreground/70">
+                  {latestVideo.duration}
+                </span>
+              </div>
+              <h3 className="text-sm font-semibold text-primary-foreground line-clamp-1">
                 {latestVideo.title}
               </h3>
+              <p className="text-[10px] text-primary-foreground/70">
+                {latestVideo.speaker}
+              </p>
             </div>
           </div>
         );

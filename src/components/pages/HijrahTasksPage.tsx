@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Circle, Plus, Calendar, TrendingUp, X, Edit3, AlertTriangle, Star, Flag } from "lucide-react";
+import { CheckCircle2, Circle, Plus, Calendar, X, Edit3, AlertTriangle, Star, Flag } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { WeeklyLineChart } from "@/components/WeeklyLineChart";
 
 // Priority levels
 type Priority = "sangat_penting" | "penting" | "rutin";
@@ -19,13 +20,14 @@ interface Task {
   isCustom?: boolean;
 }
 
+// All tasks start as incomplete for new users
 const initialTasks: Task[] = [
-  { id: "1", title: "Shalat 5 waktu tepat waktu", completed: true, category: "ibadah", priority: "sangat_penting" },
-  { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: true, category: "ibadah", priority: "sangat_penting" },
+  { id: "1", title: "Shalat 5 waktu tepat waktu", completed: false, category: "ibadah", priority: "sangat_penting" },
+  { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: false, category: "ibadah", priority: "sangat_penting" },
   { id: "3", title: "Dzikir pagi & petang", completed: false, category: "ibadah", priority: "penting" },
   { id: "4", title: "Istighfar 100x", completed: false, category: "ibadah", priority: "penting" },
   { id: "5", title: "Berbuat baik pada orang tua", completed: false, category: "akhlak", priority: "sangat_penting" },
-  { id: "6", title: "Jauhi ghibah & gosip", completed: true, category: "hijrah", priority: "penting" },
+  { id: "6", title: "Jauhi ghibah & gosip", completed: false, category: "hijrah", priority: "penting" },
   { id: "7", title: "Baca hadis 1 hadis", completed: false, category: "ilmu", priority: "rutin" },
 ];
 
@@ -115,24 +117,8 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const completedCount = tasks.filter(t => t.completed).length;
   const progressValue = (completedCount / tasks.length) * 100;
 
-  // Calculate weekly progress based on daily completion percentage
-  const getDayProgress = (dayOffset: number) => {
-    // For demo, show current day's real progress, others are simulated
-    if (dayOffset === 6) return progressValue;
-    // Simulate past days with realistic data
-    const simulated = [80, 100, 60, 90, 100, 40];
-    return simulated[dayOffset] || 0;
-  };
-
-  const weeklyProgress = [
-    { day: "Sen", value: getDayProgress(0) },
-    { day: "Sel", value: getDayProgress(1) },
-    { day: "Rab", value: getDayProgress(2) },
-    { day: "Kam", value: getDayProgress(3) },
-    { day: "Jum", value: getDayProgress(4) },
-    { day: "Sab", value: getDayProgress(5) },
-    { day: "Min", value: getDayProgress(6) },
-  ];
+  // Weekly progress starts at 0 for new users, updates based on real activity
+  const weeklyData = [0, 0, 0, 0, 0, 0, Math.round(progressValue)];
 
   return (
     <div className="min-h-screen pb-32 gradient-calm">
@@ -152,34 +138,8 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
           </Button>
         </div>
 
-        {/* Weekly Progress Chart */}
-        <Card variant="elevated">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">
-                {language === 'id' ? 'Progress Mingguan' : 'Weekly Progress'}
-              </span>
-            </div>
-            <div className="flex justify-between gap-1">
-              {weeklyProgress.map((day, index) => (
-                <div key={day.day} className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="h-20 w-full bg-muted rounded-lg relative overflow-hidden">
-                    <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: `${day.value}%` }}
-                      transition={{ delay: 0.3 + index * 0.05, duration: 0.5 }}
-                      className="absolute bottom-0 left-0 right-0 rounded-lg gradient-hero"
-                    />
-                  </div>
-                  <span className={`text-[10px] font-medium ${index === 6 ? "text-primary" : "text-muted-foreground"}`}>
-                    {day.day}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Weekly Progress Line Chart - Same as Profile */}
+        <WeeklyLineChart data={weeklyData} />
       </motion.div>
 
       {/* Today's Progress */}
