@@ -12,9 +12,10 @@ interface HomePageProps {
   onOpenProfile?: () => void;
   onOpenNotifications?: () => void;
   onCalendarToggle?: (isOpen: boolean) => void;
+  onOpenAyah?: (surahNumber: number, ayahNumber: number) => void;
 }
 
-export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCalendarToggle }: HomePageProps) => {
+export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCalendarToggle, onOpenAyah }: HomePageProps) => {
   const handleActionClick = (actionId: string) => {
     const tabMap: Record<string, string> = {
       quran: "quran",
@@ -37,7 +38,7 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCal
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <HeroCarousel onNavigate={onNavigate} />
+        <HeroCarousel onNavigate={onNavigate} onOpenAyah={onOpenAyah} />
       </motion.div>
 
       {/* Calendar Widget */}

@@ -7,18 +7,19 @@ import { videoDatabase } from "@/data/videos";
 import heroMosque from "@/assets/hero-mosque.jpg";
 
 interface BookmarkedAyah {
-  surah: string;
   surahNumber: number;
-  ayah: number;
+  surahName: string;
+  ayahNumber: number;
   text: string;
-  translation?: string;
+  translation: string;
 }
 
 interface HeroCarouselProps {
   onNavigate?: (tab: string) => void;
+  onOpenAyah?: (surahNumber: number, ayahNumber: number) => void;
 }
 
-export const HeroCarousel = ({ onNavigate }: HeroCarouselProps) => {
+export const HeroCarousel = ({ onNavigate, onOpenAyah }: HeroCarouselProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [userInteracted, setUserInteracted] = useState(false);
   const [bookmarkedAyahs, setBookmarkedAyahs] = useState<BookmarkedAyah[]>([]);
@@ -161,10 +162,10 @@ export const HeroCarousel = ({ onNavigate }: HeroCarouselProps) => {
         );
 
       case 2:
-        // Slide 3: Bookmarked Ayahs
+        // Slide 3: Bookmarked Ayahs (max 3, with translation)
         return (
           <div className="h-full w-full bg-gradient-to-br from-accent/20 via-accent/10 to-primary/20 p-4 flex flex-col">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-2">
               <Bookmark className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">
                 {language === 'id' ? 'Ayat Tersimpan' : 'Bookmarked Verses'}
@@ -174,27 +175,34 @@ export const HeroCarousel = ({ onNavigate }: HeroCarouselProps) => {
               </span>
             </div>
             {bookmarkedAyahs.length > 0 ? (
-              <div className="flex-1 overflow-hidden space-y-2">
-                {bookmarkedAyahs.slice(0, 2).map((ayah, idx) => (
+              <div className="flex-1 overflow-hidden space-y-1.5">
+                {bookmarkedAyahs.slice(0, 3).map((ayah, idx) => (
                   <div 
                     key={idx} 
                     className="bg-card/60 rounded-lg p-2 cursor-pointer hover:bg-card/80 transition-colors"
-                    onClick={() => onNavigate?.("quran")}
+                    onClick={() => onOpenAyah?.(ayah.surahNumber, ayah.ayahNumber)}
                   >
-                    <p className="font-arabic text-sm text-foreground text-right leading-relaxed line-clamp-1" dir="rtl">
-                      {ayah.text}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {ayah.surah} : {ayah.ayah}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-arabic text-xs text-foreground text-right leading-relaxed line-clamp-1" dir="rtl">
+                          {ayah.text}
+                        </p>
+                        <p className="text-[9px] text-muted-foreground line-clamp-1 mt-0.5">
+                          {ayah.translation}
+                        </p>
+                      </div>
+                      <span className="text-[9px] text-primary shrink-0">
+                        {ayah.surahName}:{ayah.ayahNumber}
+                      </span>
+                    </div>
                   </div>
                 ))}
-                {bookmarkedAyahs.length > 2 && (
+                {bookmarkedAyahs.length > 3 && (
                   <button 
                     onClick={() => onNavigate?.("quran")}
-                    className="text-xs text-primary hover:underline w-full text-center"
+                    className="text-[10px] text-primary hover:underline w-full text-center pt-1"
                   >
-                    +{bookmarkedAyahs.length - 2} {language === 'id' ? 'ayat lainnya' : 'more verses'}
+                    +{bookmarkedAyahs.length - 3} {language === 'id' ? 'ayat lainnya' : 'more verses'}
                   </button>
                 )}
               </div>

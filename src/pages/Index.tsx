@@ -21,8 +21,16 @@ const Index = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  // State for navigating to specific ayah from carousel bookmark
+  const [pendingAyah, setPendingAyah] = useState<{ surahNumber: number; ayahNumber: number } | null>(null);
 
   const { permission, requestPermission } = useNotifications();
+
+  // Handle opening ayah from carousel bookmark
+  const handleOpenAyah = (surahNumber: number, ayahNumber: number) => {
+    setPendingAyah({ surahNumber, ayahNumber });
+    setActiveTab("quran");
+  };
 
   const renderPage = () => {
     // Sub-pages that overlay the main navigation
@@ -44,10 +52,17 @@ const Index = () => {
             onOpenProfile={() => setShowProfile(true)}
             onOpenNotifications={() => setShowNotifications(true)}
             onCalendarToggle={handleCalendarToggle}
+            onOpenAyah={handleOpenAyah}
           />
         );
       case "quran":
-        return <QuranPage />;
+        return (
+          <QuranPage 
+            initialSurah={pendingAyah?.surahNumber}
+            initialAyah={pendingAyah?.ayahNumber}
+            onNavigated={() => setPendingAyah(null)}
+          />
+        );
       case "guide":
         return <TaubatGuidePage />;
       case "videos":
@@ -69,6 +84,7 @@ const Index = () => {
             onOpenProfile={() => setShowProfile(true)}
             onOpenNotifications={() => setShowNotifications(true)}
             onCalendarToggle={handleCalendarToggle}
+            onOpenAyah={handleOpenAyah}
           />
         );
     }
@@ -80,6 +96,7 @@ const Index = () => {
     setShowFAQ(false);
     setShowProfile(false);
     setShowCalendar(false);
+    setPendingAyah(null);
     setActiveTab(tab);
   };
 
