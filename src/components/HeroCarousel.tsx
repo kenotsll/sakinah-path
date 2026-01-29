@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Clock, Bookmark, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Bookmark, Play, Flame, AlertTriangle } from "lucide-react";
 import { usePrayerTimes } from "@/hooks/usePrayerTimes";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useStreak } from "@/hooks/useStreak";
 import { videoDatabase } from "@/data/videos";
 import heroMosque from "@/assets/hero-mosque.jpg";
 
@@ -27,8 +28,9 @@ export const HeroCarousel = ({ onNavigate, onOpenAyah }: HeroCarouselProps) => {
   const [bookmarkedAyahs, setBookmarkedAyahs] = useState<BookmarkedAyah[]>([]);
   const { times, location } = usePrayerTimes();
   const { language } = useLanguage();
+  const { streakCount, yellowCardsThisWeek, todayStatus, allSangatPentingDone, isStreakAtRisk, shouldResetStreak } = useStreak();
 
-  const totalSlides = 4;
+  const totalSlides = 5; // Now 5 slides with streak
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -262,6 +264,79 @@ export const HeroCarousel = ({ onNavigate, onOpenAyah }: HeroCarouselProps) => {
               <p className="text-[10px] text-primary-foreground/70">
                 {latestVideo.speaker}
               </p>
+            </div>
+          </div>
+        );
+
+      case 4:
+        // Slide 5: Streak Status
+        return (
+          <div 
+            className="h-full w-full bg-gradient-to-br from-primary/20 via-accent/10 to-primary/10 p-4 flex flex-col justify-center cursor-pointer"
+            onClick={() => onNavigate?.("tasks")}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Flame className={`h-6 w-6 ${streakCount > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+              <h3 className="font-semibold text-foreground">
+                {language === 'id' ? 'Status Streak' : 'Streak Status'}
+              </h3>
+            </div>
+
+            {/* Streak Count */}
+            <div className="text-center mb-4">
+              <div className="flex items-center justify-center gap-2">
+                <span className={`text-5xl font-bold ${streakCount > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {streakCount}
+                </span>
+                <Flame className={`h-8 w-8 ${streakCount > 0 ? 'text-orange-500 animate-pulse' : 'text-muted-foreground'}`} />
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {language === 'id' ? 'Hari berturut-turut' : 'Days in a row'}
+              </p>
+            </div>
+
+            {/* Yellow Cards Status */}
+            <div className="flex items-center justify-center gap-3">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
+                yellowCardsThisWeek.length > 0 
+                  ? 'bg-yellow-500/20 text-yellow-600' 
+                  : 'bg-primary/10 text-primary'
+              }`}>
+                <AlertTriangle className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {yellowCardsThisWeek.length}/3 {language === 'id' ? 'Kartu Kuning' : 'Yellow Cards'}
+                </span>
+              </div>
+            </div>
+
+            {/* Status Message */}
+            <div className="mt-3 text-center">
+              {shouldResetStreak ? (
+                <p className="text-xs text-destructive font-medium">
+                  {language === 'id' 
+                    ? '⚠️ Streak direset! Yuk mulai lagi dari awal.' 
+                    : '⚠️ Streak reset! Let\'s start again.'}
+                </p>
+              ) : isStreakAtRisk ? (
+                <p className="text-xs text-yellow-600 font-medium">
+                  {language === 'id' 
+                    ? '⚠️ Hati-hati! 1 kartu kuning lagi akan reset streak.' 
+                    : '⚠️ Careful! 1 more yellow card resets streak.'}
+                </p>
+              ) : todayStatus === 'completed' ? (
+                <p className="text-xs text-primary font-medium">
+                  {language === 'id' 
+                    ? '✅ Target hari ini tercapai!' 
+                    : '✅ Today\'s targets completed!'}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {language === 'id' 
+                    ? 'Selesaikan semua target "Sangat Penting" sebelum jam 00:00' 
+                    : 'Complete all "Very Important" targets before midnight'}
+                </p>
+              )}
             </div>
           </div>
         );

@@ -12,10 +12,26 @@ interface NotificationSchedule {
 
 const DEFAULT_SCHEDULES: NotificationSchedule[] = [
   {
+    id: "streak-reminder-17",
+    title: "Pengingat Target Harian ⏰",
+    message: "Masih ada waktu 7 jam sebelum batas waktu. Selesaikan target 'Sangat Penting' untuk menjaga streak-mu!",
+    hour: 17,
+    minute: 0,
+    enabled: true,
+  },
+  {
+    id: "streak-reminder-21",
+    title: "Pengingat Terakhir 🔥",
+    message: "Hanya tersisa 3 jam! Pastikan semua target 'Sangat Penting' sudah selesai untuk menjaga streak-mu.",
+    hour: 21,
+    minute: 0,
+    enabled: true,
+  },
+  {
     id: "muhasabah",
     title: "Waktu Muhasabah 🌙",
     message: "Sudahkah kita beristighfar hari ini? Yuk, tulis refleksimu sebelum tidur.",
-    hour: 21,
+    hour: 22,
     minute: 0,
     enabled: true,
   },
