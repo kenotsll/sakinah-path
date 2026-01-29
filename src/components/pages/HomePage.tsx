@@ -6,6 +6,8 @@ import { DailyProgress } from "@/components/DailyProgress";
 import { VideoRecommendations } from "@/components/VideoRecommendations";
 import { DualCalendar } from "@/components/DualCalendar";
 import { HeroCarousel } from "@/components/HeroCarousel";
+import { Button } from "@/components/ui/button";
+import { Circle } from "lucide-react";
 
 interface HomePageProps {
   onNavigate: (tab: string) => void;
@@ -13,9 +15,10 @@ interface HomePageProps {
   onOpenNotifications?: () => void;
   onCalendarToggle?: (isOpen: boolean) => void;
   onOpenAyah?: (surahNumber: number, ayahNumber: number) => void;
+  onOpenTasbih?: () => void;
 }
 
-export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCalendarToggle, onOpenAyah }: HomePageProps) => {
+export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCalendarToggle, onOpenAyah, onOpenTasbih }: HomePageProps) => {
   const handleActionClick = (actionId: string) => {
     const tabMap: Record<string, string> = {
       quran: "quran",
@@ -82,6 +85,22 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCal
           "Sebaik-baik orang yang berdosa adalah yang bertaubat."
         </p>
         <p className="text-xs text-primary mt-1">— HR. Tirmidzi</p>
+      </motion.div>
+
+      {/* Floating Tasbih Button */}
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 1, type: "spring" }}
+        className="fixed bottom-24 right-5 z-30"
+      >
+        <Button
+          onClick={onOpenTasbih}
+          size="lg"
+          className="h-14 w-14 rounded-full shadow-lg gradient-hero hover:opacity-90"
+        >
+          <Circle className="h-6 w-6 text-primary-foreground" />
+        </Button>
       </motion.div>
     </div>
   );
