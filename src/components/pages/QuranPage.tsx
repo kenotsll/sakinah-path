@@ -348,10 +348,12 @@ const AyahCard = ({
 // Surah Detail Component with Continuous Playback
 const SurahDetailView = ({ 
   surah, 
-  onBack 
+  onBack,
+  scrollToAyah,
 }: { 
   surah: SurahDetail; 
   onBack: () => void;
+  scrollToAyah?: number | null;
 }) => {
   const { language } = useLanguage();
   const [playingAyahId, setPlayingAyahId] = useState<number | null>(null);
@@ -391,6 +393,21 @@ const SurahDetailView = ({
       stopGlobalAudio();
     };
   }, []);
+
+  // Scroll to specific ayah when coming from bookmark
+  useEffect(() => {
+    if (scrollToAyah && surah.ayahs.length > 0) {
+      // Find the ayah to scroll to
+      const targetAyah = surah.ayahs.find(a => a.numberInSurah === scrollToAyah);
+      if (targetAyah) {
+        // Wait for elements to render
+        setTimeout(() => {
+          const ref = ayahRefs.current.get(targetAyah.number);
+          ref?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 500);
+      }
+    }
+  }, [scrollToAyah, surah.ayahs]);
 
   // Handle visibility change - stop audio when leaving
   useEffect(() => {
@@ -563,7 +580,13 @@ const SurahDetailView = ({
 };
 
 // Main Quran Page
-export const QuranPage = () => {
+interface QuranPageProps {
+  initialSurah?: number;
+  initialAyah?: number;
+  onNavigated?: () => void;
+}
+
+export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageProps) => {
   const { t, language } = useLanguage();
   const { 
     surahs, 
@@ -577,6 +600,7 @@ export const QuranPage = () => {
   } = useQuran();
   const [searchQuery, setSearchQuery] = useState("");
   const [lastRead, setLastRead] = useState<LastRead | null>(null);
+  const [scrollToAyah, setScrollToAyah] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSurahs();
@@ -585,6 +609,15 @@ export const QuranPage = () => {
     // Load last read
     setLastRead(getLastRead());
   }, [fetchSurahs]);
+
+  // Handle initial navigation from carousel bookmark
+  useEffect(() => {
+    if (initialSurah && surahs.length > 0 && !currentSurah) {
+      setScrollToAyah(initialAyah || null);
+      fetchSurahDetail(initialSurah);
+      onNavigated?.();
+    }
+  }, [initialSurah, initialAyah, surahs.length, currentSurah, fetchSurahDetail, onNavigated]);
 
   // Stop audio when unmounting
   useEffect(() => {
@@ -597,6 +630,7 @@ export const QuranPage = () => {
 
   const handleSelectSurah = (surahNumber: number) => {
     stopGlobalAudio();
+    setScrollToAyah(null);
     fetchSurahDetail(surahNumber);
   };
 
@@ -604,11 +638,12 @@ export const QuranPage = () => {
     stopGlobalAudio();
     // Reload last read after viewing surah
     setLastRead(getLastRead());
+    setScrollToAyah(null);
     clearCurrentSurah();
   };
 
   if (currentSurah) {
-    return <SurahDetailView surah={currentSurah} onBack={handleBack} />;
+    return <SurahDetailView surah={currentSurah} onBack={handleBack} scrollToAyah={scrollToAyah} />;
   }
 
   return (

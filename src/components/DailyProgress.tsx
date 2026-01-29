@@ -2,26 +2,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, TrendingUp, AlertTriangle, Star, Flag } from "lucide-react";
-import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
-
-type Priority = "sangat_penting" | "penting" | "rutin";
-
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  priority: Priority;
-}
-
-// All tasks start as incomplete for new users
-const initialTasks: Task[] = [
-  { id: "1", title: "Shalat 5 waktu tepat waktu", completed: false, priority: "sangat_penting" },
-  { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: false, priority: "sangat_penting" },
-  { id: "3", title: "Dzikir pagi & petang", completed: false, priority: "penting" },
-  { id: "4", title: "Istighfar 100x", completed: false, priority: "penting" },
-  { id: "5", title: "Berbuat baik pada orang tua", completed: false, priority: "sangat_penting" },
-];
+import { useTasks, Priority } from "@/hooks/useTasks";
 
 const priorityLabels: Record<Priority, { icon: React.ReactNode; color: string }> = {
   sangat_penting: { icon: <AlertTriangle className="h-3 w-3" />, color: "text-destructive" },
@@ -34,32 +16,8 @@ interface DailyProgressProps {
 }
 
 export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { tasks, toggleTask, completedCount, totalCount, progressValue } = useTasks();
   const { t, language } = useLanguage();
-
-  // Auto-sort: completed tasks go to bottom, then by priority
-  const toggleTask = (taskId: string) => {
-    setTasks(prev => {
-      const updated = prev.map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      );
-      // Sort: incomplete first, then by priority, then completed
-      return updated.sort((a, b) => {
-        if (a.completed !== b.completed) {
-          return Number(a.completed) - Number(b.completed);
-        }
-        const priorityOrder: Record<Priority, number> = {
-          sangat_penting: 0,
-          penting: 1,
-          rutin: 2,
-        };
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
-      });
-    });
-  };
-
-  const completedCount = tasks.filter(t => t.completed).length;
-  const progressValue = (completedCount / tasks.length) * 100;
 
   // Filter and show only top 3 "Sangat Penting" tasks first, then fill with others
   const getTopTasks = () => {
@@ -88,7 +46,7 @@ export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
               {t('home.dailyProgress')}
             </CardTitle>
             <span className="text-sm font-semibold text-primary">
-              {completedCount}/{tasks.length}
+              {completedCount}/{totalCount}
             </span>
           </div>
         </CardHeader>

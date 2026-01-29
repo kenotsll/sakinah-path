@@ -7,29 +7,7 @@ import { CheckCircle2, Circle, Plus, Calendar, X, Edit3, AlertTriangle, Star, Fl
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { WeeklyLineChart } from "@/components/WeeklyLineChart";
-
-// Priority levels
-type Priority = "sangat_penting" | "penting" | "rutin";
-
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  category: "ibadah" | "akhlak" | "ilmu" | "hijrah";
-  priority: Priority;
-  isCustom?: boolean;
-}
-
-// All tasks start as incomplete for new users
-const initialTasks: Task[] = [
-  { id: "1", title: "Shalat 5 waktu tepat waktu", completed: false, category: "ibadah", priority: "sangat_penting" },
-  { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: false, category: "ibadah", priority: "sangat_penting" },
-  { id: "3", title: "Dzikir pagi & petang", completed: false, category: "ibadah", priority: "penting" },
-  { id: "4", title: "Istighfar 100x", completed: false, category: "ibadah", priority: "penting" },
-  { id: "5", title: "Berbuat baik pada orang tua", completed: false, category: "akhlak", priority: "sangat_penting" },
-  { id: "6", title: "Jauhi ghibah & gosip", completed: false, category: "hijrah", priority: "penting" },
-  { id: "7", title: "Baca hadis 1 hadis", completed: false, category: "ilmu", priority: "rutin" },
-];
+import { useTasks, Task, Priority } from "@/hooks/useTasks";
 
 const categoryColors = {
   ibadah: { bg: "bg-primary-soft", text: "text-primary" },
@@ -57,54 +35,16 @@ interface HijrahTasksPageProps {
 
 export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const { language } = useLanguage();
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { tasks, toggleTask, addTask, deleteTask, completedCount, totalCount, progressValue } = useTasks();
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<Task["category"]>("ibadah");
   const [newTaskPriority, setNewTaskPriority] = useState<Priority>("penting");
 
-  // Auto-sort: completed tasks go to bottom, incomplete to top, then by priority
-  const sortTasks = (taskList: Task[]) => {
-    return [...taskList].sort((a, b) => {
-      // First sort by completion status
-      if (a.completed !== b.completed) {
-        return Number(a.completed) - Number(b.completed);
-      }
-      // Then sort by priority
-      const priorityOrder: Record<Priority, number> = {
-        sangat_penting: 0,
-        penting: 1,
-        rutin: 2,
-      };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
-    });
-  };
-
-  const toggleTask = (taskId: string) => {
-    setTasks(prev => {
-      const updated = prev.map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      );
-      return sortTasks(updated);
-    });
-  };
-
-  const deleteTask = (taskId: string) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-  };
-
-  const addTask = () => {
+  const handleAddTask = () => {
     if (newTaskTitle.trim()) {
-      const newTask: Task = {
-        id: Date.now().toString(),
-        title: newTaskTitle.trim(),
-        completed: false,
-        category: newTaskCategory,
-        priority: newTaskPriority,
-        isCustom: true,
-      };
-      setTasks(sortTasks([...tasks, newTask]));
+      addTask(newTaskTitle, newTaskCategory, newTaskPriority);
       setNewTaskTitle("");
       setIsAddingTask(false);
     }
@@ -113,9 +53,6 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const filteredTasks = activeFilter === "all"
     ? tasks
     : tasks.filter(task => task.category === activeFilter);
-
-  const completedCount = tasks.filter(t => t.completed).length;
-  const progressValue = (completedCount / tasks.length) * 100;
 
   // Weekly progress starts at 0 for new users, updates based on real activity
   const weeklyData = [0, 0, 0, 0, 0, 0, Math.round(progressValue)];
@@ -158,7 +95,7 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
                   {language === 'id' ? 'Hari Ini' : 'Today'}
                 </span>
               </div>
-              <span className="text-lg font-bold text-primary">{completedCount}/{tasks.length}</span>
+              <span className="text-lg font-bold text-primary">{completedCount}/{totalCount}</span>
             </div>
             <Progress value={progressValue} className="h-2.5" />
             <p className="text-xs text-muted-foreground mt-2">
@@ -243,7 +180,7 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
                   <Button variant="outline" className="flex-1" onClick={() => setIsAddingTask(false)}>
                     {language === 'id' ? 'Batal' : 'Cancel'}
                   </Button>
-                  <Button variant="spiritual" className="flex-1" onClick={addTask} disabled={!newTaskTitle.trim()}>
+                  <Button variant="spiritual" className="flex-1" onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
                     <Plus className="h-4 w-4 mr-1" />
                     {language === 'id' ? 'Tambah' : 'Add'}
                   </Button>
