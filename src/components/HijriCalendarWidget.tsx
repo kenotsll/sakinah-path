@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Calendar, ChevronLeft, ChevronRight, X, Star, Moon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,8 +92,7 @@ export const HijriCalendarWidget = ({ compact = false }: HijriCalendarWidgetProp
       </motion.div>
 
       {/* Modal */}
-      <AnimatePresence>
-        {isModalOpen && (
+      {isModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -200,10 +199,9 @@ export const HijriCalendarWidget = ({ compact = false }: HijriCalendarWidgetProp
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
+      )}
     </>
   );
 };

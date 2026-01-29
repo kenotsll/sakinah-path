@@ -11,7 +11,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export const MosqueFinderPage = () => {
   const { t, language } = useLanguage();
-  const { times, nextPrayer, location: prayerLocation } = usePrayerTimes();
+  const { times, nextPrayer } = usePrayerTimes();
   const { 
     latitude, 
     longitude, 
@@ -94,10 +94,12 @@ export const MosqueFinderPage = () => {
   const hasLocation = latitude !== null && longitude !== null;
   const isLoading = geoLoading || mosquesLoading;
 
+  // Navigation uses only coordinates for 100% accuracy
   const openGoogleMapsRoute = (mosque: Mosque) => {
     let url: string;
     
     if (hasLocation) {
+      // Use absolute coordinates only - no text names to avoid confusion
       url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${mosque.lat},${mosque.lng}&travelmode=driving`;
     } else {
       url = `https://www.google.com/maps/dir/?api=1&destination=${mosque.lat},${mosque.lng}&travelmode=driving`;
@@ -110,9 +112,10 @@ export const MosqueFinderPage = () => {
     let url: string;
     
     if (hasLocation) {
-      url = `https://www.google.com/maps/search/masjid+musholla/@${latitude},${longitude},15z`;
+      // Expanded search: Masjid OR Musholla OR Mosque
+      url = `https://www.google.com/maps/search/masjid+OR+musholla+OR+mosque/@${latitude},${longitude},15z`;
     } else {
-      url = `https://www.google.com/maps/search/masjid+musholla+terdekat`;
+      url = `https://www.google.com/maps/search/masjid+OR+musholla+OR+mosque`;
     }
     
     window.open(url, "_blank");
@@ -135,18 +138,30 @@ export const MosqueFinderPage = () => {
     }
   };
 
-  // Get display location text
+  // Get clean location display - only street/area name
   const getLocationDisplay = () => {
     if (address) {
-      const parts = [address.street, address.district, address.city].filter(Boolean);
-      return parts.length > 0 ? parts.join(', ') : address.fullAddress;
+      // Prefer street, then district, then just area
+      if (address.street) return address.street;
+      if (address.district) return address.district;
+      if (address.city) return address.city;
+      return address.fullAddress;
     }
-    return `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)}`;
+    return language === 'id' ? 'Mendapatkan lokasi...' : 'Getting location...';
+  };
+
+  // Get mosque address display - fallback to coordinates if no address
+  const getMosqueAddress = (mosque: Mosque) => {
+    if (mosque.address && mosque.address !== 'Alamat tidak tersedia') {
+      return mosque.address;
+    }
+    // Don't show "Alamat tidak tersedia" - just show area info from context
+    return `${mosque.distance} dari lokasimu`;
   };
 
   return (
     <div className="min-h-screen pb-32 bg-background">
-      {/* Header */}
+      {/* Header - Clean without city name */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -155,9 +170,9 @@ export const MosqueFinderPage = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground mb-1">{t('mosque.title')}</h1>
-            {prayerLocation && (
-              <p className="text-sm text-muted-foreground">📍 {prayerLocation.city}</p>
-            )}
+            <p className="text-sm text-muted-foreground">
+              {language === 'id' ? 'Temukan masjid & musholla terdekat' : 'Find nearby mosques'}
+            </p>
           </div>
           {hasLocation && (
             <Button
@@ -172,7 +187,7 @@ export const MosqueFinderPage = () => {
         </div>
       </motion.div>
 
-      {/* Location Card */}
+      {/* Location Card - Clean display */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -189,7 +204,7 @@ export const MosqueFinderPage = () => {
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">{t('common.loading')}</p>
                   <p className="text-xs text-muted-foreground">
-                    {language === 'id' ? 'Mencari lokasi dengan akurasi tinggi...' : 'Finding location with high accuracy...'}
+                    {language === 'id' ? 'Mencari lokasi...' : 'Finding location...'}
                   </p>
                 </div>
               </div>
@@ -220,21 +235,15 @@ export const MosqueFinderPage = () => {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">
-                    {language === 'id' ? 'Lokasimu saat ini' : 'Your current location'}
+                    {language === 'id' ? 'Lokasimu' : 'Your location'}
                   </p>
-                  <p className="text-sm font-medium text-foreground line-clamp-1">
+                  <p className="text-sm font-medium text-foreground">
                     {addressLoading ? (
-                      <span className="text-muted-foreground">{language === 'id' ? 'Mendapatkan alamat...' : 'Getting address...'}</span>
+                      <span className="text-muted-foreground animate-pulse">...</span>
                     ) : (
                       getLocationDisplay()
                     )}
                   </p>
-                </div>
-                <div className="flex flex-col items-end gap-0.5">
-                  <span className="text-[10px] text-primary">🔄 Auto 5m</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {latitude?.toFixed(4)}, {longitude?.toFixed(4)}
-                  </span>
                 </div>
               </div>
             )}
@@ -327,8 +336,8 @@ export const MosqueFinderPage = () => {
               <p className="text-xs text-muted-foreground mb-4">
                 {permissionDenied 
                   ? (language === 'id' 
-                      ? "Aktifkan izin lokasi di pengaturan browser untuk melihat masjid terdekat"
-                      : "Enable location permission in browser settings to see nearby mosques")
+                      ? "Aktifkan izin lokasi di pengaturan browser"
+                      : "Enable location in browser settings")
                   : t('mosque.enableLocationDesc')}
               </p>
               <Button 
@@ -378,10 +387,10 @@ export const MosqueFinderPage = () => {
                           <span className="text-lg">{mosque.type === "masjid" ? "🕌" : "📿"}</span>
                           <h3 className="text-sm font-semibold text-foreground">{mosque.name}</h3>
                         </div>
-                        <p className="text-xs text-muted-foreground">{mosque.address}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{getMosqueAddress(mosque)}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs font-medium text-primary">{mosque.distance}</span>
+                        <span className="text-sm font-bold text-primary">{mosque.distance}</span>
                         <p className="text-[10px] text-muted-foreground capitalize">{mosque.type}</p>
                       </div>
                     </div>
@@ -392,7 +401,7 @@ export const MosqueFinderPage = () => {
                         className="flex-1 gradient-hero text-primary-foreground"
                         onClick={() => openGoogleMapsRoute(mosque)}
                       >
-                        <Navigation className="h-3.5 w-3.5" />
+                        <Navigation className="h-3.5 w-3.5 mr-1" />
                         {t('mosque.route')}
                       </Button>
                       {mosque.phone && (
@@ -432,7 +441,7 @@ export const MosqueFinderPage = () => {
             <div className="text-center">
               <MapPin className="h-8 w-8 text-primary mx-auto mb-2" />
               <p className="text-sm text-muted-foreground mb-2">
-                {language === 'id' ? 'Lihat Semua Masjid & Musholla di Peta' : 'View All Mosques on Map'}
+                {language === 'id' ? 'Lihat Semua di Peta' : 'View All on Map'}
               </p>
               <Button 
                 size="sm"

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Home, Book, Video, CheckSquare, MapPin, BookHeart } from "lucide-react";
+import { Home, Book, Video, CheckSquare, MapPin, BookHeart, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useRef, useEffect } from "react";
@@ -13,12 +13,14 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
   const { t, language } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // 7 tabs with Konsultasi restored
   const tabs = [
     { id: "home", label: t('nav.home'), icon: Home },
     { id: "quran", label: "Qur'an", icon: Book },
     { id: "guide", label: language === 'id' ? 'Panduan' : 'Guide', icon: BookHeart },
     { id: "videos", label: t('nav.videos'), icon: Video },
     { id: "tasks", label: t('nav.tasks'), icon: CheckSquare },
+    { id: "consult", label: language === 'id' ? 'Ustadz' : 'Consult', icon: MessageCircle },
     { id: "mosque", label: language === 'id' ? 'Masjid' : 'Mosque', icon: MapPin },
   ];
 
