@@ -61,14 +61,16 @@ export const useMosqueSearch = () => {
     setError(null);
 
     try {
-      // Overpass API query for mosques and prayer rooms
+      // Expanded Overpass API query: Masjid OR Musholla OR Mosque OR Surau OR Langgar
       const query = `
-        [out:json][timeout:25];
+        [out:json][timeout:30];
         (
           node["amenity"="place_of_worship"]["religion"="muslim"](around:${radiusKm * 1000},${latitude},${longitude});
           node["building"="mosque"](around:${radiusKm * 1000},${latitude},${longitude});
+          node["name"~"[Mm]asjid|[Mm]ushol|[Mm]ushal|[Ss]urau|[Ll]anggar|[Mm]osque",i](around:${radiusKm * 1000},${latitude},${longitude});
           way["amenity"="place_of_worship"]["religion"="muslim"](around:${radiusKm * 1000},${latitude},${longitude});
           way["building"="mosque"](around:${radiusKm * 1000},${latitude},${longitude});
+          relation["amenity"="place_of_worship"]["religion"="muslim"](around:${radiusKm * 1000},${latitude},${longitude});
         );
         out center;
       `;

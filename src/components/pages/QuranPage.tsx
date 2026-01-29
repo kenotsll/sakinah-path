@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,28 @@ import {
   Bookmark,
   ChevronDown,
   ChevronUp,
-  Loader2
+  Loader2,
+  SkipForward,
+  SkipBack,
+  VolumeX
 } from "lucide-react";
 import { useQuran, Surah, SurahDetail, Ayah } from "@/hooks/useQuran";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+// Global audio manager for continuous playback
+let globalAudio: HTMLAudioElement | null = null;
+let globalPlayingAyahId: number | null = null;
+let globalOnPlayingChange: ((ayahId: number | null) => void) | null = null;
+
+const stopGlobalAudio = () => {
+  if (globalAudio) {
+    globalAudio.pause();
+    globalAudio.src = '';
+    globalAudio = null;
+  }
+  globalPlayingAyahId = null;
+  globalOnPlayingChange?.(null);
+};
 
 // Surah List Component
 const SurahList = ({ 
@@ -30,7 +48,7 @@ const SurahList = ({
   searchQuery: string;
   onSearchChange: (q: string) => void;
 }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   
   return (
     <div className="space-y-4">
@@ -88,34 +106,20 @@ const SurahList = ({
 };
 
 // Ayah Card Component with Audio
-const AyahCard = ({ ayah, surahNumber }: { ayah: Ayah; surahNumber: number }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
+const AyahCard = ({ 
+  ayah, 
+  surahNumber, 
+  isPlaying,
+  onPlay,
+  onPause,
+}: { 
+  ayah: Ayah; 
+  surahNumber: number;
+  isPlaying: boolean;
+  onPlay: () => void;
+  onPause: () => void;
+}) => {
   const [expanded, setExpanded] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const toggleAudio = () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(ayah.audioUrl);
-      audioRef.current.onended = () => setIsPlaying(false);
-    }
-
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
 
   return (
     <Card className="bg-card border-border overflow-hidden">
@@ -134,8 +138,8 @@ const AyahCard = ({ ayah, surahNumber }: { ayah: Ayah; surahNumber: number }) =>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
-              onClick={toggleAudio}
+              className={`h-8 w-8 ${isPlaying ? 'text-primary bg-primary/10' : ''}`}
+              onClick={isPlaying ? onPause : onPlay}
             >
               {isPlaying ? (
                 <Pause className="h-4 w-4 text-primary" />
@@ -179,7 +183,7 @@ const AyahCard = ({ ayah, surahNumber }: { ayah: Ayah; surahNumber: number }) =>
   );
 };
 
-// Surah Detail Component
+// Surah Detail Component with Continuous Playback
 const SurahDetailView = ({ 
   surah, 
   onBack 
@@ -187,14 +191,116 @@ const SurahDetailView = ({
   surah: SurahDetail; 
   onBack: () => void;
 }) => {
-  const [playingAll, setPlayingAll] = useState(false);
+  const { language } = useLanguage();
+  const [playingAyahId, setPlayingAyahId] = useState<number | null>(null);
+  const [isPlayingAll, setIsPlayingAll] = useState(false);
+  const ayahRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Register the global callback
+  useEffect(() => {
+    globalOnPlayingChange = (ayahId) => {
+      setPlayingAyahId(ayahId);
+      if (ayahId === null) {
+        setIsPlayingAll(false);
+      }
+    };
+
+    return () => {
+      globalOnPlayingChange = null;
+    };
+  }, []);
+
+  // Stop audio when leaving the page
+  useEffect(() => {
+    return () => {
+      stopGlobalAudio();
+    };
+  }, []);
+
+  // Handle visibility change - stop audio when leaving
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopGlobalAudio();
+        setIsPlayingAll(false);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  const playAyah = useCallback((ayah: Ayah, continueToNext: boolean = false) => {
+    stopGlobalAudio();
+
+    globalAudio = new Audio(ayah.audioUrl);
+    globalPlayingAyahId = ayah.number;
+    setPlayingAyahId(ayah.number);
+
+    globalAudio.onended = () => {
+      if (continueToNext) {
+        // Find next ayah
+        const currentIndex = surah.ayahs.findIndex(a => a.number === ayah.number);
+        if (currentIndex < surah.ayahs.length - 1) {
+          const nextAyah = surah.ayahs[currentIndex + 1];
+          // Scroll to next ayah
+          const nextRef = ayahRefs.current.get(nextAyah.number);
+          nextRef?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Play next
+          setTimeout(() => playAyah(nextAyah, true), 300);
+        } else {
+          // End of surah
+          stopGlobalAudio();
+          setIsPlayingAll(false);
+        }
+      } else {
+        stopGlobalAudio();
+      }
+    };
+
+    globalAudio.onerror = () => {
+      console.error('Audio playback error');
+      stopGlobalAudio();
+    };
+
+    globalAudio.play().catch(err => {
+      console.error('Play failed:', err);
+      stopGlobalAudio();
+    });
+  }, [surah.ayahs]);
+
+  const handlePlayAll = () => {
+    if (isPlayingAll) {
+      stopGlobalAudio();
+      setIsPlayingAll(false);
+    } else {
+      setIsPlayingAll(true);
+      if (surah.ayahs.length > 0) {
+        playAyah(surah.ayahs[0], true);
+      }
+    }
+  };
+
+  const handlePlaySingleAyah = (ayah: Ayah) => {
+    if (playingAyahId === ayah.number) {
+      stopGlobalAudio();
+    } else {
+      setIsPlayingAll(false);
+      playAyah(ayah, false);
+    }
+  };
+
+  const handleBack = () => {
+    stopGlobalAudio();
+    onBack();
+  };
 
   return (
     <div className="min-h-screen pb-32">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-xl border-b border-border px-5 py-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+          <Button variant="ghost" size="icon" onClick={handleBack}>
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -206,6 +312,33 @@ const SurahDetailView = ({
               {surah.englishNameTranslation} • {surah.numberOfAyahs} Ayat
             </p>
           </div>
+        </div>
+
+        {/* Play All Controls */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+          <Button
+            variant={isPlayingAll ? "default" : "outline"}
+            size="sm"
+            onClick={handlePlayAll}
+            className={isPlayingAll ? "gradient-hero text-primary-foreground" : ""}
+          >
+            {isPlayingAll ? (
+              <>
+                <Pause className="h-4 w-4 mr-1" />
+                {language === 'id' ? 'Hentikan' : 'Stop'}
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-1" />
+                {language === 'id' ? 'Putar Semua' : 'Play All'}
+              </>
+            )}
+          </Button>
+          {isPlayingAll && playingAyahId && (
+            <span className="text-xs text-primary animate-pulse">
+              ▶ Ayat {surah.ayahs.find(a => a.number === playingAyahId)?.numberInSurah || '...'}
+            </span>
+          )}
         </div>
       </div>
 
@@ -232,11 +365,20 @@ const SurahDetailView = ({
         {surah.ayahs.map((ayah, index) => (
           <motion.div
             key={ayah.number}
+            ref={(el) => {
+              if (el) ayahRefs.current.set(ayah.number, el);
+            }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03 }}
           >
-            <AyahCard ayah={ayah} surahNumber={surah.number} />
+            <AyahCard 
+              ayah={ayah} 
+              surahNumber={surah.number}
+              isPlaying={playingAyahId === ayah.number}
+              onPlay={() => handlePlaySingleAyah(ayah)}
+              onPause={() => stopGlobalAudio()}
+            />
           </motion.div>
         ))}
       </div>
@@ -261,16 +403,31 @@ export const QuranPage = () => {
 
   useEffect(() => {
     fetchSurahs();
+    // Stop any playing audio when component mounts fresh
+    stopGlobalAudio();
   }, [fetchSurahs]);
+
+  // Stop audio when unmounting
+  useEffect(() => {
+    return () => {
+      stopGlobalAudio();
+    };
+  }, []);
 
   const filteredSurahs = searchSurahs(searchQuery);
 
   const handleSelectSurah = (surahNumber: number) => {
+    stopGlobalAudio();
     fetchSurahDetail(surahNumber);
   };
 
+  const handleBack = () => {
+    stopGlobalAudio();
+    clearCurrentSurah();
+  };
+
   if (currentSurah) {
-    return <SurahDetailView surah={currentSurah} onBack={clearCurrentSurah} />;
+    return <SurahDetailView surah={currentSurah} onBack={handleBack} />;
   }
 
   return (
