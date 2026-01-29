@@ -95,13 +95,20 @@ function gregorianToHijri(date: Date): HijriDate {
 
 interface DualCalendarProps {
   compact?: boolean;
+  onModalToggle?: (isOpen: boolean) => void;
 }
 
-export const DualCalendar = ({ compact = false }: DualCalendarProps) => {
+export const DualCalendar = ({ compact = false, onModalToggle }: DualCalendarProps) => {
   const { language } = useLanguage();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  // Notify parent when modal state changes
+  const handleModalOpen = (isOpen: boolean) => {
+    setIsModalOpen(isOpen);
+    onModalToggle?.(isOpen);
+  };
 
   const today = new Date();
   const todayHijri = gregorianToHijri(today);
@@ -211,7 +218,7 @@ export const DualCalendar = ({ compact = false }: DualCalendarProps) => {
   if (compact) {
     return (
       <button
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => handleModalOpen(true)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors"
       >
         <Moon className="h-4 w-4 text-primary" />
@@ -228,7 +235,7 @@ export const DualCalendar = ({ compact = false }: DualCalendarProps) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="cursor-pointer"
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => handleModalOpen(true)}
       >
         <Card className="bg-card border-border overflow-hidden hover:shadow-md transition-shadow">
           <CardContent className="p-4">
@@ -278,7 +285,7 @@ export const DualCalendar = ({ compact = false }: DualCalendarProps) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
-          onClick={() => setIsModalOpen(false)}
+          onClick={() => handleModalOpen(false)}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -293,7 +300,7 @@ export const DualCalendar = ({ compact = false }: DualCalendarProps) => {
                 <div className="p-4 border-b border-border flex items-center justify-between gradient-hero shrink-0">
                   <div>
                     <h2 className="text-lg font-bold text-primary-foreground">
-                      {language === 'id' ? 'Kalender Ganda' : 'Dual Calendar'}
+                      {language === 'id' ? 'Kalender' : 'Calendar'}
                     </h2>
                     <p className="text-sm text-primary-foreground/80">
                       {gregorianMonthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
@@ -302,7 +309,7 @@ export const DualCalendar = ({ compact = false }: DualCalendarProps) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={() => handleModalOpen(false)}
                     className="text-primary-foreground hover:bg-primary-foreground/20"
                   >
                     <X className="h-5 w-5" />

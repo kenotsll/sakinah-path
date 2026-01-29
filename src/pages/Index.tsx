@@ -20,6 +20,7 @@ const Index = () => {
   const [showFAQ, setShowFAQ] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const { permission, requestPermission } = useNotifications();
 
@@ -42,6 +43,7 @@ const Index = () => {
             onNavigate={setActiveTab} 
             onOpenProfile={() => setShowProfile(true)}
             onOpenNotifications={() => setShowNotifications(true)}
+            onCalendarToggle={handleCalendarToggle}
           />
         );
       case "quran":
@@ -66,6 +68,7 @@ const Index = () => {
             onNavigate={setActiveTab}
             onOpenProfile={() => setShowProfile(true)}
             onOpenNotifications={() => setShowNotifications(true)}
+            onCalendarToggle={handleCalendarToggle}
           />
         );
     }
@@ -76,12 +79,18 @@ const Index = () => {
     setShowReflection(false);
     setShowFAQ(false);
     setShowProfile(false);
+    setShowCalendar(false);
     setActiveTab(tab);
   };
 
-  // Auto-hide footer conditions: sub-pages OR Quran page
+  // Callback when calendar modal opens/closes
+  const handleCalendarToggle = (isOpen: boolean) => {
+    setShowCalendar(isOpen);
+  };
+
+  // Auto-hide footer conditions: sub-pages OR calendar modal open (NOT Quran page anymore)
   const isSubPage = showReflection || showFAQ || showProfile;
-  const shouldHideFooter = isSubPage || activeTab === "quran";
+  const shouldHideFooter = isSubPage || showCalendar;
 
   return (
     <div className="min-h-screen bg-background">

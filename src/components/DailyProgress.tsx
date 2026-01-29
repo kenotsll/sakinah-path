@@ -14,6 +14,7 @@ interface Task {
   priority: Priority;
 }
 
+// All tasks start as incomplete for new users
 const initialTasks: Task[] = [
   { id: "1", title: "Shalat 5 waktu tepat waktu", completed: false, priority: "sangat_penting" },
   { id: "2", title: "Baca Al-Qur'an 1 halaman", completed: false, priority: "sangat_penting" },

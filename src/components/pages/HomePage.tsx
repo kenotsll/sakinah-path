@@ -11,9 +11,10 @@ interface HomePageProps {
   onNavigate: (tab: string) => void;
   onOpenProfile?: () => void;
   onOpenNotifications?: () => void;
+  onCalendarToggle?: (isOpen: boolean) => void;
 }
 
-export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: HomePageProps) => {
+export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCalendarToggle }: HomePageProps) => {
   const handleActionClick = (actionId: string) => {
     const tabMap: Record<string, string> = {
       quran: "quran",
@@ -45,14 +46,14 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: Hom
         />
       </motion.div>
 
-      {/* Dual Calendar Widget */}
+      {/* Calendar Widget */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="px-5 mb-6"
       >
-        <DualCalendar />
+        <DualCalendar onModalToggle={onCalendarToggle} />
       </motion.div>
 
       {/* Daily Quote */}
