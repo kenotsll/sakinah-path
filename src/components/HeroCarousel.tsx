@@ -28,7 +28,7 @@ export const HeroCarousel = ({ onNavigate, onOpenAyah }: HeroCarouselProps) => {
   const [bookmarkedAyahs, setBookmarkedAyahs] = useState<BookmarkedAyah[]>([]);
   const { times, location } = usePrayerTimes();
   const { language } = useLanguage();
-  const { streakCount, yellowCardsThisWeek, todayStatus, allSangatPentingDone, isStreakAtRisk, shouldResetStreak } = useStreak();
+  const { streakCount, yellowCardsThisWeek, todayStatus, isStreakAtRisk } = useStreak();
 
   const totalSlides = 5; // Now 5 slides with streak
 
@@ -312,7 +312,7 @@ export const HeroCarousel = ({ onNavigate, onOpenAyah }: HeroCarouselProps) => {
 
             {/* Status Message */}
             <div className="mt-2 text-center">
-              {shouldResetStreak ? (
+              {yellowCardsThisWeek.length >= 3 ? (
                 <p className="text-[10px] text-destructive font-medium">
                   ⚠️ {language === 'id' ? 'Streak direset! Yuk mulai lagi.' : 'Streak reset! Start again.'}
                 </p>

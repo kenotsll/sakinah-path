@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTasks } from './useTasks';
 
 export interface StreakData {
   streakCount: number;
@@ -51,11 +50,11 @@ const saveLocalStreakData = (data: StreakData) => {
 
 export const useStreak = () => {
   const { user } = useAuth();
-  const [streakData, setStreakData] = useState<StreakData>(getDefaultStreakData);
+  const [streakData, setStreakData] = useState<StreakData>(() => 
+    user ? getDefaultStreakData() : loadLocalStreakData()
+  );
   const [loading, setLoading] = useState(true);
-  const { tasks } = useTasks();
 
-  // Get today's date string
   const today = getDateString();
 
   // Fetch streak from Supabase
@@ -76,7 +75,6 @@ export const useStreak = () => {
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
-        // Convert yellow_card_dates array to YellowCard objects
         const yellowCards: YellowCard[] = (data.yellow_card_dates || []).map((date: string) => ({
           date,
           reason: 'no_task_completed' as const,
@@ -89,7 +87,6 @@ export const useStreak = () => {
           todayStatus: data.last_completed_date === today ? 'completed' : 'pending',
         });
       } else {
-        // Create initial streak record
         const { data: inserted, error: insertError } = await supabase
           .from('user_streaks')
           .insert({ user_id: user.id })
@@ -119,7 +116,7 @@ export const useStreak = () => {
     fetchStreak();
   }, [fetchStreak]);
 
-  // Save streak to Supabase
+  // Save streak
   const saveStreak = useCallback(async (data: StreakData) => {
     if (!user) {
       saveLocalStreakData(data);
@@ -129,7 +126,7 @@ export const useStreak = () => {
     try {
       const yellowCardDates = data.yellowCards.map(c => c.date);
       
-      const { error } = await supabase
+      await supabase
         .from('user_streaks')
         .update({
           streak_count: data.streakCount,
@@ -138,141 +135,77 @@ export const useStreak = () => {
           yellow_card_dates: yellowCardDates,
         })
         .eq('user_id', user.id);
-
-      if (error) throw error;
     } catch (error) {
       console.error('Error saving streak:', error);
     }
   }, [user]);
 
-  // Check if all "sangat_penting" tasks are completed
-  const checkSangatPentingCompleted = useCallback((): boolean => {
-    const sangatPentingTasks = tasks.filter(t => t.priority === 'sangat_penting');
-    if (sangatPentingTasks.length === 0) return true;
-    return sangatPentingTasks.every(t => t.completed);
-  }, [tasks]);
-
-  // Check if any task is completed today
-  const hasAnyTaskCompleted = useCallback((): boolean => {
-    return tasks.some(t => t.completed);
-  }, [tasks]);
-
-  // Get yellow cards from this week (last 7 days)
+  // Get yellow cards from this week
   const getYellowCardsThisWeek = useCallback((): YellowCard[] => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const cutoffDate = getDateString(sevenDaysAgo);
-    
     return streakData.yellowCards.filter(card => card.date >= cutoffDate);
   }, [streakData.yellowCards]);
 
-  // Check and update streak status
-  const updateStreakStatus = useCallback(() => {
-    const allSangatPentingDone = checkSangatPentingCompleted();
-    const anyTaskDone = hasAnyTaskCompleted();
-    
+  // Mark today as completed (called externally when all sangat_penting tasks done)
+  const markTodayCompleted = useCallback(() => {
     setStreakData(prev => {
-      const newData = { ...prev };
+      if (prev.lastCompletedDate === today) return prev;
       
-      if (allSangatPentingDone && anyTaskDone) {
-        newData.todayStatus = 'completed';
-        
-        if (prev.lastCompletedDate !== today) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = getDateString(yesterday);
-          
-          if (prev.lastCompletedDate === yesterdayStr || prev.streakCount === 0) {
-            newData.streakCount = prev.streakCount + 1;
-          } else if (prev.lastCompletedDate !== today) {
-            newData.streakCount = 1;
-          }
-          
-          newData.lastCompletedDate = today;
-        }
-      } else if (!anyTaskDone) {
-        newData.todayStatus = 'pending';
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = getDateString(yesterday);
+      
+      let newStreakCount = prev.streakCount;
+      if (prev.lastCompletedDate === yesterdayStr || prev.streakCount === 0) {
+        newStreakCount = prev.streakCount + 1;
       } else {
-        newData.todayStatus = 'pending';
+        newStreakCount = 1;
       }
       
-      saveStreak(newData);
-      return newData;
-    });
-  }, [checkSangatPentingCompleted, hasAnyTaskCompleted, today, saveStreak]);
-
-  // Add yellow card
-  const addYellowCard = useCallback((reason: YellowCard['reason']) => {
-    setStreakData(prev => {
-      const newData = { ...prev };
-      
-      const alreadyHasCard = prev.yellowCards.some(card => card.date === today);
-      if (!alreadyHasCard) {
-        newData.yellowCards = [...prev.yellowCards, { date: today, reason }];
-        newData.todayStatus = 'failed';
-        
-        const recentCards = newData.yellowCards.filter(card => {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          return card.date >= getDateString(sevenDaysAgo);
-        });
-        
-        if (recentCards.length >= 3) {
-          newData.streakCount = 0;
-          newData.lastCompletedDate = null;
-        }
-      }
+      const newData: StreakData = {
+        ...prev,
+        streakCount: newStreakCount,
+        lastCompletedDate: today,
+        todayStatus: 'completed',
+      };
       
       saveStreak(newData);
       return newData;
     });
   }, [today, saveStreak]);
 
-  // Check for midnight reset
-  const checkMidnightReset = useCallback(() => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    if (currentHour === 0 && currentMinute === 0) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = getDateString(yesterday);
-      
-      if (streakData.lastCompletedDate !== yesterdayStr) {
-        addYellowCard('no_task_completed');
-        return { shouldNotify: true, type: 'yellow_card' as const };
-      }
-    }
-    
-    return { shouldNotify: false, type: null };
-  }, [streakData.lastCompletedDate, addYellowCard]);
-
-  // Clean up old yellow cards
-  const cleanupOldCards = useCallback(() => {
+  // Add yellow card
+  const addYellowCard = useCallback((reason: YellowCard['reason']) => {
     setStreakData(prev => {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const cutoffDate = getDateString(thirtyDaysAgo);
+      const alreadyHasCard = prev.yellowCards.some(card => card.date === today);
+      if (alreadyHasCard) return prev;
+
+      const newYellowCards = [...prev.yellowCards, { date: today, reason }];
       
-      const filteredCards = prev.yellowCards.filter(card => card.date >= cutoffDate);
+      const recentCards = newYellowCards.filter(card => {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        return card.date >= getDateString(sevenDaysAgo);
+      });
       
-      if (filteredCards.length !== prev.yellowCards.length) {
-        const newData = { ...prev, yellowCards: filteredCards };
-        saveStreak(newData);
-        return newData;
-      }
+      const shouldReset = recentCards.length >= 3;
       
-      return prev;
+      const newData: StreakData = {
+        ...prev,
+        yellowCards: newYellowCards,
+        todayStatus: 'failed',
+        streakCount: shouldReset ? 0 : prev.streakCount,
+        lastCompletedDate: shouldReset ? null : prev.lastCompletedDate,
+      };
+      
+      saveStreak(newData);
+      return newData;
     });
-  }, [saveStreak]);
+  }, [today, saveStreak]);
 
-  // Listen for task updates
-  useEffect(() => {
-    updateStreakStatus();
-  }, [tasks, updateStreakStatus]);
-
-  // Listen for storage updates (for non-authenticated)
+  // Listen for storage updates (non-authenticated)
   useEffect(() => {
     if (user) return;
 
@@ -289,20 +222,8 @@ export const useStreak = () => {
     };
   }, [user]);
 
-  // Cleanup on mount
-  useEffect(() => {
-    cleanupOldCards();
-  }, [cleanupOldCards]);
-
-  // Check midnight reset periodically
-  useEffect(() => {
-    const interval = setInterval(checkMidnightReset, 60000);
-    return () => clearInterval(interval);
-  }, [checkMidnightReset]);
-
   const yellowCardsThisWeek = getYellowCardsThisWeek();
   const isStreakAtRisk = yellowCardsThisWeek.length >= 2;
-  const shouldResetStreak = yellowCardsThisWeek.length >= 3;
 
   return {
     streakCount: streakData.streakCount,
@@ -310,12 +231,9 @@ export const useStreak = () => {
     yellowCardsThisWeek,
     todayStatus: streakData.todayStatus,
     isStreakAtRisk,
-    shouldResetStreak,
-    allSangatPentingDone: checkSangatPentingCompleted(),
     loading,
-    updateStreakStatus,
+    markTodayCompleted,
     addYellowCard,
-    checkMidnightReset,
     refetch: fetchStreak,
   };
 };
