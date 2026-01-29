@@ -196,21 +196,85 @@ const SurahList = ({
   );
 };
 
+// Bookmark storage key
+const BOOKMARKS_KEY = 'istiqamah_bookmarks';
+
+interface BookmarkedAyah {
+  surahNumber: number;
+  surahName: string;
+  ayahNumber: number;
+  text: string;
+  translation: string;
+}
+
+const getBookmarks = (): BookmarkedAyah[] => {
+  try {
+    const stored = localStorage.getItem(BOOKMARKS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveBookmarks = (bookmarks: BookmarkedAyah[]) => {
+  try {
+    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+  } catch {
+    console.error('Failed to save bookmarks');
+  }
+};
+
 // Ayah Card Component with Audio
 const AyahCard = ({ 
   ayah, 
-  surahNumber, 
+  surahNumber,
+  surahName,
   isPlaying,
   onPlay,
   onPause,
 }: { 
   ayah: Ayah; 
   surahNumber: number;
+  surahName: string;
   isPlaying: boolean;
   onPlay: () => void;
   onPause: () => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+
+  // Check if this ayah is bookmarked on mount
+  useEffect(() => {
+    const bookmarks = getBookmarks();
+    const found = bookmarks.some(
+      b => b.surahNumber === surahNumber && b.ayahNumber === ayah.numberInSurah
+    );
+    setIsBookmarked(found);
+  }, [surahNumber, ayah.numberInSurah]);
+
+  const toggleBookmark = () => {
+    const bookmarks = getBookmarks();
+    const existingIndex = bookmarks.findIndex(
+      b => b.surahNumber === surahNumber && b.ayahNumber === ayah.numberInSurah
+    );
+
+    if (existingIndex >= 0) {
+      // Remove bookmark
+      bookmarks.splice(existingIndex, 1);
+      setIsBookmarked(false);
+    } else {
+      // Add bookmark
+      bookmarks.push({
+        surahNumber,
+        surahName,
+        ayahNumber: ayah.numberInSurah,
+        text: ayah.text,
+        translation: ayah.translation || '',
+      });
+      setIsBookmarked(true);
+    }
+    saveBookmarks(bookmarks);
+  };
 
   return (
     <Card className="bg-card border-border overflow-hidden">
@@ -238,8 +302,13 @@ const AyahCard = ({
                 <Play className="h-4 w-4" />
               )}
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Bookmark className="h-4 w-4" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`h-8 w-8 ${isBookmarked ? 'text-primary bg-primary/10' : ''}`}
+              onClick={toggleBookmark}
+            >
+              <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-primary' : ''}`} />
             </Button>
           </div>
         </div>
@@ -479,6 +548,7 @@ const SurahDetailView = ({
             <AyahCard 
               ayah={ayah} 
               surahNumber={surah.number}
+              surahName={surah.englishName}
               isPlaying={playingAyahId === ayah.number}
               onPlay={() => handlePlaySingleAyah(ayah)}
               onPause={() => stopGlobalAudio()}

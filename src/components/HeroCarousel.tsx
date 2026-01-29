@@ -12,39 +12,45 @@ interface HeroCarouselProps {
 
 export const HeroCarousel = ({ bookmarkedAyahs = [], onNavigate }: HeroCarouselProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [userInteracted, setUserInteracted] = useState(false);
   const { times, location } = usePrayerTimes();
   const { language } = useLanguage();
 
   const totalSlides = 4;
 
-  // Auto-advance slides every 5 seconds
+  // Auto-advance slides every 5 seconds (only if user hasn't interacted)
   useEffect(() => {
+    if (userInteracted) return;
+    
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % totalSlides);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userInteracted]);
 
   const goToSlide = (index: number) => {
+    setUserInteracted(true);
     setCurrentSlide(index);
   };
 
   const goNext = () => {
+    setUserInteracted(true);
     setCurrentSlide((prev) => (prev + 1) % totalSlides);
   };
 
   const goPrev = () => {
+    setUserInteracted(true);
     setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
   };
 
-  // Prayer times data
+  // Prayer times data (no emoji icons)
   const prayerList = times
     ? [
-        { name: "Subuh", time: times.Fajr, icon: "🌅" },
-        { name: "Dzuhur", time: times.Dhuhr, icon: "☀️" },
-        { name: "Ashar", time: times.Asr, icon: "🌤️" },
-        { name: "Maghrib", time: times.Maghrib, icon: "🌇" },
-        { name: "Isya", time: times.Isha, icon: "🌙" },
+        { name: "Subuh", time: times.Fajr },
+        { name: "Dzuhur", time: times.Dhuhr },
+        { name: "Ashar", time: times.Asr },
+        { name: "Maghrib", time: times.Maghrib },
+        { name: "Isya", time: times.Isha },
       ]
     : [];
 
@@ -110,10 +116,9 @@ export const HeroCarousel = ({ bookmarkedAyahs = [], onNavigate }: HeroCarouselP
             </div>
             <div className="grid grid-cols-5 gap-2">
               {prayerList.map((prayer) => (
-                <div key={prayer.name} className="text-center">
-                  <span className="text-lg">{prayer.icon}</span>
-                  <p className="text-[10px] text-muted-foreground">{prayer.name}</p>
-                  <p className="text-xs font-semibold text-foreground">{prayer.time}</p>
+                <div key={prayer.name} className="text-center bg-card/40 rounded-lg py-2 px-1">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">{prayer.name}</p>
+                  <p className="text-sm font-bold text-foreground">{prayer.time}</p>
                 </div>
               ))}
             </div>
