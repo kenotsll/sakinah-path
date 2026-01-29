@@ -87,17 +87,22 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCal
         <p className="text-xs text-primary mt-1">— HR. Tirmidzi</p>
       </motion.div>
 
-      {/* Floating Tasbih Button */}
+      {/* Floating Draggable Tasbih Button */}
       <motion.div
-        initial={{ scale: 0 }}
+        drag
+        dragMomentum={false}
+        dragElastic={0.1}
+        whileDrag={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        initial={{ scale: 0, x: 0, y: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 1, type: "spring" }}
-        className="fixed bottom-24 right-5 z-30"
+        className="fixed bottom-24 right-5 z-30 cursor-grab active:cursor-grabbing"
       >
         <Button
           onClick={onOpenTasbih}
           size="lg"
-          className="h-14 w-14 rounded-full shadow-lg gradient-hero hover:opacity-90"
+          className="h-14 w-14 rounded-full shadow-lg gradient-hero hover:opacity-90 pointer-events-auto"
         >
           <Circle className="h-6 w-6 text-primary-foreground" />
         </Button>
