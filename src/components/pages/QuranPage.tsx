@@ -219,6 +219,8 @@ const getBookmarks = (): BookmarkedAyah[] => {
 const saveBookmarks = (bookmarks: BookmarkedAyah[]) => {
   try {
     localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+    // Dispatch custom event to notify other components (like HeroCarousel)
+    window.dispatchEvent(new Event('bookmarks-updated'));
   } catch {
     console.error('Failed to save bookmarks');
   }
