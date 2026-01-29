@@ -36,22 +36,113 @@ const stopGlobalAudio = () => {
   globalOnPlayingChange?.(null);
 };
 
+// Last Read Storage Key
+const LAST_READ_KEY = 'istiqamah_last_read';
+
+interface LastRead {
+  surahNumber: number;
+  surahName: string;
+  surahArabic: string;
+  ayahNumber: number;
+  timestamp: number;
+}
+
+const getLastRead = (): LastRead | null => {
+  try {
+    const stored = localStorage.getItem(LAST_READ_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveLastRead = (data: LastRead) => {
+  try {
+    localStorage.setItem(LAST_READ_KEY, JSON.stringify(data));
+  } catch {
+    console.error('Failed to save last read');
+  }
+};
+
+// Last Read Card Component
+const LastReadCard = ({ 
+  lastRead, 
+  onContinue 
+}: { 
+  lastRead: LastRead | null; 
+  onContinue: (surahNumber: number) => void;
+}) => {
+  const { language } = useLanguage();
+
+  if (!lastRead) return null;
+
+  const timeAgo = () => {
+    const diff = Date.now() - lastRead.timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (days > 0) return language === 'id' ? `${days} hari lalu` : `${days}d ago`;
+    if (hours > 0) return language === 'id' ? `${hours} jam lalu` : `${hours}h ago`;
+    if (minutes > 0) return language === 'id' ? `${minutes} menit lalu` : `${minutes}m ago`;
+    return language === 'id' ? 'Baru saja' : 'Just now';
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="px-5 mb-4"
+    >
+      <Card 
+        className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 border-primary/20 cursor-pointer hover:shadow-md transition-shadow"
+        onClick={() => onContinue(lastRead.surahNumber)}
+      >
+        <CardContent className="p-4 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
+            <Book className="h-6 w-6 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground mb-0.5">
+              {language === 'id' ? '📖 Terakhir Dibaca' : '📖 Last Read'}
+            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground">{lastRead.surahName}</h3>
+                <p className="text-xs text-muted-foreground">
+                  Ayat {lastRead.ayahNumber} • {timeAgo()}
+                </p>
+              </div>
+              <span className="font-arabic text-lg text-primary">{lastRead.surahArabic}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
+
 // Surah List Component
 const SurahList = ({ 
   surahs, 
   onSelect, 
   searchQuery, 
-  onSearchChange 
+  onSearchChange,
+  lastRead,
 }: { 
   surahs: Surah[]; 
   onSelect: (num: number) => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  lastRead: LastRead | null;
 }) => {
   const { language } = useLanguage();
   
   return (
     <div className="space-y-4">
+      {/* Last Read Section */}
+      <LastReadCard lastRead={lastRead} onContinue={onSelect} />
+
       {/* Search */}
       <div className="px-5">
         <div className="relative">
@@ -195,6 +286,19 @@ const SurahDetailView = ({
   const [playingAyahId, setPlayingAyahId] = useState<number | null>(null);
   const [isPlayingAll, setIsPlayingAll] = useState(false);
   const ayahRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Save last read when surah is opened
+  useEffect(() => {
+    if (surah) {
+      saveLastRead({
+        surahNumber: surah.number,
+        surahName: surah.englishName,
+        surahArabic: surah.name,
+        ayahNumber: 1,
+        timestamp: Date.now(),
+      });
+    }
+  }, [surah]);
 
   // Register the global callback
   useEffect(() => {
@@ -400,11 +504,14 @@ export const QuranPage = () => {
     clearCurrentSurah 
   } = useQuran();
   const [searchQuery, setSearchQuery] = useState("");
+  const [lastRead, setLastRead] = useState<LastRead | null>(null);
 
   useEffect(() => {
     fetchSurahs();
     // Stop any playing audio when component mounts fresh
     stopGlobalAudio();
+    // Load last read
+    setLastRead(getLastRead());
   }, [fetchSurahs]);
 
   // Stop audio when unmounting
@@ -423,6 +530,8 @@ export const QuranPage = () => {
 
   const handleBack = () => {
     stopGlobalAudio();
+    // Reload last read after viewing surah
+    setLastRead(getLastRead());
     clearCurrentSurah();
   };
 
@@ -468,13 +577,14 @@ export const QuranPage = () => {
         </div>
       )}
 
-      {/* Surah List */}
+      {/* Surah List with Last Read */}
       {surahs.length > 0 && (
         <SurahList
           surahs={filteredSurahs}
           onSelect={handleSelectSurah}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          lastRead={lastRead}
         />
       )}
 
@@ -490,3 +600,6 @@ export const QuranPage = () => {
     </div>
   );
 };
+
+// Export saveLastRead for use in SurahDetailView
+export { saveLastRead };

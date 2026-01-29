@@ -56,19 +56,19 @@ export const Header = ({ userName, onOpenProfile, onOpenNotifications }: HeaderP
           </div>
         </div>
         
-        {/* Location & Next Prayer */}
+        {/* Next Prayer - Clean layout without raw location text */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
-            <span>{location?.city || t('common.loading')}</span>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-6 w-6"
+              size="sm"
+              className="h-6 px-2 text-xs"
               onClick={refetch}
               disabled={loading}
             >
-              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
             </Button>
           </div>
           

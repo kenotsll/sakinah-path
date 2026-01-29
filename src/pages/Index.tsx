@@ -79,7 +79,9 @@ const Index = () => {
     setActiveTab(tab);
   };
 
+  // Auto-hide footer conditions: sub-pages OR Quran page
   const isSubPage = showReflection || showFAQ || showProfile;
+  const shouldHideFooter = isSubPage || activeTab === "quran";
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,8 +99,8 @@ const Index = () => {
           </motion.div>
         </AnimatePresence>
         
-        {/* Hide bottom nav when in sub-pages */}
-        {!isSubPage && (
+        {/* Hide bottom nav when in sub-pages or Quran page */}
+        {!shouldHideFooter && (
           <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
         )}
 

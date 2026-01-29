@@ -2,17 +2,18 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   ArrowLeft, Camera, User, Mail, Phone, Globe, Palette, Bell, 
-  Check, LogOut, Loader2, HelpCircle
+  Check, LogOut, Loader2, HelpCircle, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNotifications } from "@/hooks/useNotifications";
 import { toast } from "sonner";
+import { WeeklyLineChart } from "@/components/WeeklyLineChart";
+import { FeedbackForm } from "@/components/FeedbackForm";
 import {
   Accordion,
   AccordionContent,
@@ -132,9 +133,12 @@ export const ProfilePage = ({ onBack }: ProfilePageProps) => {
   };
 
   // Calculate real progress from profile/database
-  // New users start at 0
+  // New users start at 0 - will be connected to database later
   const weeklyProgress = profile ? 0 : 0; // Will be updated when we add task tracking
   const daysActive = 0; // Will be calculated from real activity data
+  
+  // Weekly progress data for line chart (0 for new users, will be populated from DB)
+  const weeklyProgressData = [0, 0, 0, 0, 0, 0, 0];
 
   if (authLoading) {
     return (
@@ -391,7 +395,7 @@ export const ProfilePage = ({ onBack }: ProfilePageProps) => {
           </Card>
         </motion.div>
 
-        {/* Weekly Progress */}
+        {/* Weekly Progress - Line Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -399,21 +403,24 @@ export const ProfilePage = ({ onBack }: ProfilePageProps) => {
         >
           <Card className="bg-card border-border">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3 mb-4">
+                <TrendingUp className="h-5 w-5 text-muted-foreground" />
                 <h3 className="font-semibold text-foreground">{t('profile.weeklyProgress')}</h3>
-                <span className="text-2xl font-bold text-primary">{weeklyProgress}%</span>
               </div>
               
-              <Progress value={weeklyProgress} className="h-3 mb-3" />
-              
-              <p className="text-sm text-muted-foreground">
-                {language === 'id' 
-                  ? `Aktif ${daysActive} dari 7 hari minggu ini`
-                  : `Active ${daysActive} of 7 days this week`
-                }
-              </p>
+              {/* Gradient Line Chart - Real-time data (starts at 0 for new users) */}
+              <WeeklyLineChart data={weeklyProgressData} />
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Feedback Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.38 }}
+        >
+          <FeedbackForm userEmail={user?.email} />
         </motion.div>
 
         {/* FAQ Section */}
