@@ -53,6 +53,147 @@ export type Database = {
         }
         Relationships: []
       }
+      user_bookmarks: {
+        Row: {
+          ayah_number: number
+          ayah_text: string
+          created_at: string
+          id: string
+          show_on_carousel: boolean
+          surah_arabic: string | null
+          surah_name: string
+          surah_number: number
+          translation: string | null
+          user_id: string
+        }
+        Insert: {
+          ayah_number: number
+          ayah_text: string
+          created_at?: string
+          id?: string
+          show_on_carousel?: boolean
+          surah_arabic?: string | null
+          surah_name: string
+          surah_number: number
+          translation?: string | null
+          user_id: string
+        }
+        Update: {
+          ayah_number?: number
+          ayah_text?: string
+          created_at?: string
+          id?: string
+          show_on_carousel?: boolean
+          surah_arabic?: string | null
+          surah_name?: string
+          surah_number?: number
+          translation?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_streaks: {
+        Row: {
+          created_at: string
+          id: string
+          last_completed_date: string | null
+          streak_count: number
+          updated_at: string
+          user_id: string
+          yellow_card_dates: string[] | null
+          yellow_cards: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_completed_date?: string | null
+          streak_count?: number
+          updated_at?: string
+          user_id: string
+          yellow_card_dates?: string[] | null
+          yellow_cards?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_completed_date?: string | null
+          streak_count?: number
+          updated_at?: string
+          user_id?: string
+          yellow_card_dates?: string[] | null
+          yellow_cards?: number
+        }
+        Relationships: []
+      }
+      user_tasbih_sessions: {
+        Row: {
+          completed: boolean
+          count: number
+          created_at: string
+          dzikir_type: string
+          id: string
+          target: number
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          count?: number
+          created_at?: string
+          dzikir_type: string
+          id?: string
+          target?: number
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          count?: number
+          created_at?: string
+          dzikir_type?: string
+          id?: string
+          target?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_tasks: {
+        Row: {
+          category: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_custom: boolean
+          priority: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_custom?: boolean
+          priority?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_custom?: boolean
+          priority?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
