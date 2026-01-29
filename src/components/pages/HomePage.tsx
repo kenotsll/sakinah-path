@@ -5,7 +5,7 @@ import { QuickActions } from "@/components/QuickActions";
 import { DailyProgress } from "@/components/DailyProgress";
 import { VideoRecommendations } from "@/components/VideoRecommendations";
 import { DualCalendar } from "@/components/DualCalendar";
-import heroMosque from "@/assets/hero-mosque.jpg";
+import { HeroCarousel } from "@/components/HeroCarousel";
 
 interface HomePageProps {
   onNavigate: (tab: string) => void;
@@ -27,38 +27,22 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications }: Hom
     onNavigate(tabMap[actionId] || "home");
   };
 
+  // Sample bookmarked ayahs (will be connected to database later)
+  const bookmarkedAyahs: { surah: string; ayah: number; text: string }[] = [];
+
   return (
     <div className="min-h-screen pb-32 gradient-calm">
       <Header onOpenProfile={onOpenProfile} onOpenNotifications={onOpenNotifications} />
       
-      {/* Hero Section */}
+      {/* Hero Carousel - 4 Slides */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="relative mx-5 mb-6 overflow-hidden rounded-2xl"
       >
-        <img
-          src={heroMosque}
-          alt="Mosque at sunrise"
-          className="w-full h-48 object-cover"
+        <HeroCarousel 
+          bookmarkedAyahs={bookmarkedAyahs}
+          onNavigate={onNavigate}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/20 to-transparent" />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="absolute bottom-4 left-4 right-4"
-        >
-          <p className="font-arabic text-xl text-primary-foreground text-center leading-relaxed mb-1">
-            ۞ اِسْتِقَامَة ۞
-          </p>
-          <h1 className="text-lg font-bold text-primary-foreground text-center">
-            Istiqamah
-          </h1>
-          <p className="text-xs text-primary-foreground/80 text-center">
-            Langkah Menuju Kebaikan
-          </p>
-        </motion.div>
       </motion.div>
 
       {/* Dual Calendar Widget */}
