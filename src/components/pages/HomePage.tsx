@@ -90,22 +90,23 @@ export const HomePage = ({ onNavigate, onOpenProfile, onOpenNotifications, onCal
       {/* Floating Draggable Tasbih Button */}
       <motion.div
         drag
+        dragConstraints={{ left: -300, right: 0, top: -500, bottom: 0 }}
         dragMomentum={false}
-        dragElastic={0.1}
-        whileDrag={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        initial={{ scale: 0, x: 0, y: 0 }}
+        dragElastic={0.05}
+        whileDrag={{ scale: 1.15, boxShadow: "0 10px 30px rgba(0,0,0,0.3)" }}
+        initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 1, type: "spring" }}
-        className="fixed bottom-24 right-5 z-30 cursor-grab active:cursor-grabbing"
+        className="fixed bottom-24 right-5 z-30 touch-none"
+        style={{ touchAction: "none" }}
       >
-        <Button
+        <motion.button
           onClick={onOpenTasbih}
-          size="lg"
-          className="h-14 w-14 rounded-full shadow-lg gradient-hero hover:opacity-90 pointer-events-auto"
+          whileTap={{ scale: 0.9 }}
+          className="h-14 w-14 rounded-full shadow-lg gradient-hero flex items-center justify-center cursor-grab active:cursor-grabbing"
         >
           <Circle className="h-6 w-6 text-primary-foreground" />
-        </Button>
+        </motion.button>
       </motion.div>
     </div>
   );
