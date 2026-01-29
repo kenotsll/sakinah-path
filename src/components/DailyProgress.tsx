@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, TrendingUp, AlertTriangle, Star, Flag } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTasks, Priority } from "@/hooks/useTasks";
@@ -51,7 +50,15 @@ export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Progress value={progressValue} className="h-2" />
+          {/* Overall Progress Bar */}
+          <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-primary-glow"
+              initial={{ width: 0 }}
+              animate={{ width: `${progressValue}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
           
           <div className="space-y-2">
             <AnimatePresence mode="popLayout">
@@ -63,32 +70,44 @@ export const DailyProgress = ({ onNavigate }: DailyProgressProps) => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.3 }}
-                  className={`flex items-center gap-3 py-2 cursor-pointer rounded-lg px-2 transition-all ${
+                  className={`relative flex flex-col gap-1 py-2 cursor-pointer rounded-lg px-3 transition-all overflow-hidden ${
                     task.completed 
                       ? 'task-complete' 
                       : 'task-incomplete'
                   }`}
                   onClick={() => toggleTask(task.id)}
                 >
-                  <motion.div
-                    whileTap={{ scale: 0.9 }}
-                    className="flex-shrink-0"
-                  >
-                    {task.completed ? (
-                      <CheckCircle2 className="h-5 w-5 text-primary" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </motion.div>
-                  <div className="flex-1 min-w-0">
-                    <span className={`text-sm ${task.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                      {task.title}
-                    </span>
-                    {!task.completed && (
-                      <span className={`ml-2 ${priorityLabels[task.priority].color}`}>
-                        {priorityLabels[task.priority].icon}
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      whileTap={{ scale: 0.9 }}
+                      className="flex-shrink-0"
+                    >
+                      {task.completed ? (
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </motion.div>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-sm ${task.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                        {task.title}
                       </span>
-                    )}
+                      {!task.completed && (
+                        <span className={`ml-2 ${priorityLabels[task.priority].color}`}>
+                          {priorityLabels[task.priority].icon}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Individual Task Progress Bar */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-primary/60 to-primary"
+                      initial={{ width: task.completed ? "100%" : "0%" }}
+                      animate={{ width: task.completed ? "100%" : "0%" }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                    />
                   </div>
                 </motion.div>
               ))}

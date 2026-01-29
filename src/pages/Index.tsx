@@ -11,6 +11,7 @@ import { ReflectionPage } from "@/components/pages/ReflectionPage";
 import { FAQPage } from "@/components/pages/FAQPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import { NotificationPanel } from "@/components/pages/NotificationPanel";
+import { TasbihDigital } from "@/components/TasbihDigital";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -21,6 +22,7 @@ const Index = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showTasbih, setShowTasbih] = useState(false);
   // State for navigating to specific ayah from carousel bookmark
   const [pendingAyah, setPendingAyah] = useState<{ surahNumber: number; ayahNumber: number } | null>(null);
 
@@ -53,6 +55,7 @@ const Index = () => {
             onOpenNotifications={() => setShowNotifications(true)}
             onCalendarToggle={handleCalendarToggle}
             onOpenAyah={handleOpenAyah}
+            onOpenTasbih={() => setShowTasbih(true)}
           />
         );
       case "quran":
@@ -85,6 +88,7 @@ const Index = () => {
             onOpenNotifications={() => setShowNotifications(true)}
             onCalendarToggle={handleCalendarToggle}
             onOpenAyah={handleOpenAyah}
+            onOpenTasbih={() => setShowTasbih(true)}
           />
         );
     }
@@ -136,6 +140,12 @@ const Index = () => {
           onClose={() => setShowNotifications(false)}
           onRequestPermission={requestPermission}
           hasPermission={permission === "granted"}
+        />
+
+        {/* Tasbih Digital Modal */}
+        <TasbihDigital 
+          isOpen={showTasbih} 
+          onClose={() => setShowTasbih(false)} 
         />
       </div>
     </div>
