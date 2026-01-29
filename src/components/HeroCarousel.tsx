@@ -272,69 +272,61 @@ export const HeroCarousel = ({ onNavigate, onOpenAyah }: HeroCarouselProps) => {
         // Slide 5: Streak Status
         return (
           <div 
-            className="h-full w-full bg-gradient-to-br from-primary/20 via-accent/10 to-primary/10 p-4 flex flex-col justify-center cursor-pointer"
+            className="h-full w-full bg-gradient-to-br from-primary/20 via-accent/10 to-primary/10 p-4 pb-8 flex flex-col justify-center cursor-pointer"
             onClick={() => onNavigate?.("tasks")}
           >
             {/* Header */}
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Flame className={`h-6 w-6 ${streakCount > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
-              <h3 className="font-semibold text-foreground">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Flame className={`h-5 w-5 ${streakCount > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+              <h3 className="font-semibold text-sm text-foreground">
                 {language === 'id' ? 'Status Streak' : 'Streak Status'}
               </h3>
             </div>
 
             {/* Streak Count */}
-            <div className="text-center mb-4">
+            <div className="text-center mb-2">
               <div className="flex items-center justify-center gap-2">
-                <span className={`text-5xl font-bold ${streakCount > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span className={`text-4xl font-bold ${streakCount > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
                   {streakCount}
                 </span>
-                <Flame className={`h-8 w-8 ${streakCount > 0 ? 'text-orange-500 animate-pulse' : 'text-muted-foreground'}`} />
+                <Flame className={`h-6 w-6 ${streakCount > 0 ? 'text-orange-500 animate-pulse' : 'text-muted-foreground'}`} />
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground">
                 {language === 'id' ? 'Hari berturut-turut' : 'Days in a row'}
               </p>
             </div>
 
             {/* Yellow Cards Status */}
-            <div className="flex items-center justify-center gap-3">
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
+            <div className="flex items-center justify-center">
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs ${
                 yellowCardsThisWeek.length > 0 
                   ? 'bg-yellow-500/20 text-yellow-600' 
                   : 'bg-primary/10 text-primary'
               }`}>
-                <AlertTriangle className="h-4 w-4" />
-                <span className="text-sm font-medium">
+                <AlertTriangle className="h-3 w-3" />
+                <span className="font-medium">
                   {yellowCardsThisWeek.length}/3 {language === 'id' ? 'Kartu Kuning' : 'Yellow Cards'}
                 </span>
               </div>
             </div>
 
             {/* Status Message */}
-            <div className="mt-3 text-center">
+            <div className="mt-2 text-center">
               {shouldResetStreak ? (
-                <p className="text-xs text-destructive font-medium">
-                  {language === 'id' 
-                    ? '⚠️ Streak direset! Yuk mulai lagi dari awal.' 
-                    : '⚠️ Streak reset! Let\'s start again.'}
+                <p className="text-[10px] text-destructive font-medium">
+                  ⚠️ {language === 'id' ? 'Streak direset! Yuk mulai lagi.' : 'Streak reset! Start again.'}
                 </p>
               ) : isStreakAtRisk ? (
-                <p className="text-xs text-yellow-600 font-medium">
-                  {language === 'id' 
-                    ? '⚠️ Hati-hati! 1 kartu kuning lagi akan reset streak.' 
-                    : '⚠️ Careful! 1 more yellow card resets streak.'}
+                <p className="text-[10px] text-yellow-600 font-medium">
+                  ⚠️ {language === 'id' ? '1 kartu lagi = reset streak' : '1 more card = reset'}
                 </p>
               ) : todayStatus === 'completed' ? (
-                <p className="text-xs text-primary font-medium">
-                  {language === 'id' 
-                    ? '✅ Target hari ini tercapai!' 
-                    : '✅ Today\'s targets completed!'}
+                <p className="text-[10px] text-primary font-medium">
+                  ✅ {language === 'id' ? 'Target hari ini tercapai!' : 'Today\'s targets done!'}
                 </p>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  {language === 'id' 
-                    ? 'Selesaikan semua target "Sangat Penting" sebelum jam 00:00' 
-                    : 'Complete all "Very Important" targets before midnight'}
+                <p className="text-[10px] text-muted-foreground">
+                  {language === 'id' ? 'Selesaikan target "Sangat Penting" sebelum 00:00' : 'Complete important targets before midnight'}
                 </p>
               )}
             </div>
