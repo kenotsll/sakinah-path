@@ -376,9 +376,9 @@ const AyahCard = ({
             </div>
           </div>
 
-          {/* Arabic Text */}
+          {/* Arabic Text with End-of-Ayah Mark */}
           <p className="font-arabic text-2xl text-foreground text-right leading-loose" dir="rtl">
-            {ayah.text}
+            {ayah.text} <span className="text-primary/70">۝{ayah.numberInSurah}</span>
           </p>
 
           {/* Translation */}
