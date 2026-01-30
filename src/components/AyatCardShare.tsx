@@ -106,7 +106,11 @@ export const AyatCardShare = ({
     return sorted.map(idx => ayahs[idx]).filter(Boolean);
   }, [selectedAyahs, ayahs]);
 
-  const combinedArabic = selectedContent.map(a => a.text).join(' ');
+  // Add an end-of-ayah stop marker ONLY for the share card (not the Quran reading UI)
+  // If we can't render the circled number reliably across fonts, we keep it simple: ۝
+  const combinedArabic = selectedContent
+    .map((a) => `${a.text?.trim?.() ?? a.text} ۝`)
+    .join(' ');
   const combinedTranslation = selectedContent.map(a => a.translation).join(' ');
 
   // Ayah range text
@@ -265,7 +269,16 @@ export const AyatCardShare = ({
     `;
 
     try {
-      const dataUrl = await toPng(container.firstChild as HTMLElement, {
+      // IMPORTANT: container.firstChild can be a Text node (whitespace), which breaks html-to-image
+      // and can lead to errors like reading 'fontFamily' of undefined.
+      const storyEl = container.firstElementChild as HTMLElement | null;
+      if (!storyEl) {
+        console.error('Failed to generate image: story root element not found');
+        document.body.removeChild(container);
+        return null;
+      }
+
+      const dataUrl = await toPng(storyEl, {
         quality: 1,
         pixelRatio: 1,
         width: 1080,
