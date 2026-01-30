@@ -552,11 +552,14 @@ export const AyatCardShare = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2" onClick={e => e.stopPropagation()}>
               <Button
                 variant="outline"
                 className="flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                onClick={handleExport}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleExport();
+                }}
                 disabled={isExporting}
               >
                 {exportSuccess ? (
@@ -573,7 +576,10 @@ export const AyatCardShare = ({
               </Button>
               <Button
                 className="flex-1 gap-2 bg-white text-black hover:bg-white/90"
-                onClick={handleShare}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShare();
+                }}
                 disabled={isExporting}
               >
                 <Share2 className="h-4 w-4" />
