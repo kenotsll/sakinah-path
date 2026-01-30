@@ -11,7 +11,7 @@ import { ReflectionPage } from "@/components/pages/ReflectionPage";
 import { FAQPage } from "@/components/pages/FAQPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import { NotificationPanel } from "@/components/pages/NotificationPanel";
-import { TasbihDigital } from "@/components/TasbihDigital";
+import { TasbihPage } from "@/components/pages/TasbihPage";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -37,6 +37,9 @@ const Index = () => {
 
   const renderPage = () => {
     // Sub-pages that overlay the main navigation
+    if (showTasbih) {
+      return <TasbihPage onBack={() => setShowTasbih(false)} />;
+    }
     if (showProfile) {
       return <ProfilePage onBack={() => setShowProfile(false)} />;
     }
@@ -111,8 +114,8 @@ const Index = () => {
     setShowCalendar(isOpen);
   };
 
-  // Auto-hide footer conditions: sub-pages, calendar modal open, or ayat share modal open
-  const isSubPage = showReflection || showFAQ || showProfile;
+  // Auto-hide footer conditions: sub-pages, calendar modal open, tasbih page, or ayat share modal open
+  const isSubPage = showReflection || showFAQ || showProfile || showTasbih;
   const shouldHideFooter = isSubPage || showCalendar || showAyatShare;
 
   return (
@@ -121,7 +124,7 @@ const Index = () => {
       <div className="mx-auto max-w-lg min-h-screen relative">
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${activeTab}-${showReflection}-${showFAQ}-${showProfile}`}
+            key={`${activeTab}-${showReflection}-${showFAQ}-${showProfile}-${showTasbih}`}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -144,11 +147,6 @@ const Index = () => {
           hasPermission={permission === "granted"}
         />
 
-        {/* Tasbih Digital Modal */}
-        <TasbihDigital 
-          isOpen={showTasbih} 
-          onClose={() => setShowTasbih(false)} 
-        />
       </div>
     </div>
   );
