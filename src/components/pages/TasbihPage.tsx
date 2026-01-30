@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { ChevronLeft, RotateCcw, Target, Volume2, VolumeX, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,47 +17,28 @@ const DZIKIR_PRESETS = [
 ];
 
 const TARGET_OPTIONS = [33, 99, 100, 1000];
-const TOTAL_BEADS = 33;
 const STORAGE_KEY = 'istiqamah_tasbih_state';
 
-// Modern digital click sound using Web Audio API
+// Digital click sound using Web Audio API
 const playDigitalClick = () => {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
-    // Create oscillators for a sharper, more digital sound
-    const osc1 = audioContext.createOscillator();
-    const osc2 = audioContext.createOscillator();
+    const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    const filter = audioContext.createBiquadFilter();
     
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gainNode);
+    oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    // Sharp attack frequencies
-    osc1.frequency.setValueAtTime(2000, audioContext.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.02);
-    osc1.type = 'triangle';
+    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.03);
+    oscillator.type = 'sine';
     
-    osc2.frequency.setValueAtTime(1500, audioContext.currentTime);
-    osc2.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.025);
-    osc2.type = 'sine';
+    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
     
-    // High-pass filter for crisp sound
-    filter.type = 'highpass';
-    filter.frequency.value = 600;
-    filter.Q.value = 2;
-    
-    // Sharp attack, quick decay
-    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.06);
-    
-    osc1.start(audioContext.currentTime);
-    osc2.start(audioContext.currentTime);
-    osc1.stop(audioContext.currentTime + 0.06);
-    osc2.stop(audioContext.currentTime + 0.06);
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.08);
   } catch (e) {
     // Audio not supported
   }
@@ -66,141 +47,8 @@ const playDigitalClick = () => {
 // Haptic feedback
 const triggerHaptic = (type: 'light' | 'heavy' = 'light') => {
   if ('vibrate' in navigator) {
-    navigator.vibrate(type === 'heavy' ? [100, 50, 100] : 20);
+    navigator.vibrate(type === 'heavy' ? [100, 50, 100] : 15);
   }
-};
-
-// 3D Octagon Bead Component
-const OctagonBead3D = ({ 
-  isActive, 
-  isCurrent,
-  index,
-  onTap,
-}: { 
-  isActive: boolean; 
-  isCurrent: boolean;
-  index: number;
-  onTap: () => void;
-}) => {
-  // Octagon points for SVG
-  const size = 56;
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = 24;
-  
-  // Generate octagon points
-  const points = Array.from({ length: 8 }, (_, i) => {
-    const angle = (i * Math.PI * 2) / 8 - Math.PI / 2;
-    return `${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`;
-  }).join(' ');
-
-  return (
-    <motion.div
-      className="relative cursor-pointer select-none"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ 
-        opacity: 1, 
-        y: 0,
-        scale: isCurrent ? 1.15 : 1,
-      }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 400, 
-        damping: 25,
-        delay: index * 0.02,
-      }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onTap}
-    >
-      <svg 
-        width={size} 
-        height={size} 
-        viewBox={`0 0 ${size} ${size}`}
-        className="drop-shadow-lg"
-      >
-        {/* Outer glow for current bead */}
-        {isCurrent && (
-          <polygon
-            points={points}
-            fill="none"
-            stroke="hsl(var(--primary))"
-            strokeWidth="3"
-            opacity="0.4"
-            filter="blur(4px)"
-          />
-        )}
-        
-        {/* Main octagon with 3D gradient */}
-        <defs>
-          <linearGradient id={`bead-gradient-${index}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            {isActive ? (
-              <>
-                <stop offset="0%" stopColor="hsl(142, 40%, 55%)" />
-                <stop offset="50%" stopColor="hsl(142, 35%, 45%)" />
-                <stop offset="100%" stopColor="hsl(142, 30%, 35%)" />
-              </>
-            ) : (
-              <>
-                <stop offset="0%" stopColor="hsl(0, 0%, 35%)" />
-                <stop offset="50%" stopColor="hsl(0, 0%, 25%)" />
-                <stop offset="100%" stopColor="hsl(0, 0%, 18%)" />
-              </>
-            )}
-          </linearGradient>
-          
-          {/* Faceted crystal highlight */}
-          <linearGradient id={`highlight-${index}`} x1="0%" y1="0%" x2="50%" y2="50%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-          </linearGradient>
-        </defs>
-        
-        {/* Base octagon */}
-        <polygon
-          points={points}
-          fill={`url(#bead-gradient-${index})`}
-          stroke={isActive ? "hsl(142, 35%, 55%)" : "hsl(0, 0%, 30%)"}
-          strokeWidth="1.5"
-        />
-        
-        {/* Facet lines for crystal effect */}
-        <line 
-          x1={cx} y1={cy - r * 0.7} 
-          x2={cx} y2={cy} 
-          stroke="rgba(255,255,255,0.15)" 
-          strokeWidth="0.5"
-        />
-        <line 
-          x1={cx - r * 0.5} y1={cy - r * 0.5} 
-          x2={cx} y2={cy} 
-          stroke="rgba(255,255,255,0.1)" 
-          strokeWidth="0.5"
-        />
-        <line 
-          x1={cx + r * 0.5} y1={cy - r * 0.5} 
-          x2={cx} y2={cy} 
-          stroke="rgba(255,255,255,0.1)" 
-          strokeWidth="0.5"
-        />
-        
-        {/* Top highlight for 3D effect */}
-        <polygon
-          points={points}
-          fill={`url(#highlight-${index})`}
-          opacity="0.6"
-        />
-        
-        {/* Small center facet */}
-        <circle
-          cx={cx}
-          cy={cy}
-          r="4"
-          fill={isActive ? "hsl(142, 40%, 60%)" : "hsl(0, 0%, 35%)"}
-          opacity="0.5"
-        />
-      </svg>
-    </motion.div>
-  );
 };
 
 export const TasbihPage = ({ onBack }: TasbihPageProps) => {
@@ -230,7 +78,6 @@ export const TasbihPage = ({ onBack }: TasbihPageProps) => {
 
   const dzikir = DZIKIR_PRESETS[dzikirIndex];
   const progress = Math.min((count / target) * 100, 100);
-  const fullRounds = Math.floor(count / TOTAL_BEADS);
 
   // Save state to localStorage
   useEffect(() => {
@@ -240,14 +87,11 @@ export const TasbihPage = ({ onBack }: TasbihPageProps) => {
 
   const handleTap = useCallback(() => {
     if (count < target) {
-      setCount(prev => prev + 1);
+      setCount((prev: number) => prev + 1);
       triggerHaptic('light');
       if (soundEnabled) playDigitalClick();
-    } else if (!targetReached) {
-      setTargetReached(true);
-      triggerHaptic('heavy');
     }
-  }, [count, target, soundEnabled, targetReached]);
+  }, [count, target, soundEnabled]);
 
   // Check if target reached
   useEffect(() => {
@@ -266,7 +110,7 @@ export const TasbihPage = ({ onBack }: TasbihPageProps) => {
   const handleSwipe = (info: PanInfo) => {
     if (Math.abs(info.offset.x) > 50) {
       const direction = info.offset.x > 0 ? -1 : 1;
-      setDzikirIndex(prev => {
+      setDzikirIndex((prev: number) => {
         const newIndex = prev + direction;
         if (newIndex < 0) return DZIKIR_PRESETS.length - 1;
         if (newIndex >= DZIKIR_PRESETS.length) return 0;
@@ -276,25 +120,16 @@ export const TasbihPage = ({ onBack }: TasbihPageProps) => {
     }
   };
 
-  // Generate visible beads (show around current count position)
-  const visibleBeads = useMemo(() => {
-    const beads = [];
-    const currentBeadInRound = count % TOTAL_BEADS;
-    
-    for (let i = 0; i < TOTAL_BEADS; i++) {
-      beads.push({
-        index: i,
-        isActive: i < currentBeadInRound || (count > 0 && i === currentBeadInRound),
-        isCurrent: i === currentBeadInRound && count < target,
-      });
-    }
-    return beads;
-  }, [count, target]);
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div 
+      className="min-h-screen bg-background flex flex-col"
+      onClick={handleTap}
+    >
       {/* Header */}
-      <div className="sticky top-0 z-10 p-4 flex items-center justify-between bg-background/90 backdrop-blur-sm border-b border-border">
+      <div 
+        className="sticky top-0 z-10 p-4 flex items-center justify-between bg-background/90 backdrop-blur-sm border-b border-border"
+        onClick={e => e.stopPropagation()}
+      >
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ChevronLeft className="h-6 w-6" />
         </Button>
@@ -311,13 +146,14 @@ export const TasbihPage = ({ onBack }: TasbihPageProps) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col px-6 py-4 overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
         {/* Dzikir Text with Swipe */}
         <motion.div
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           onDragEnd={(_, info) => handleSwipe(info)}
-          className="text-center mb-4 cursor-grab active:cursor-grabbing"
+          className="text-center mb-8 cursor-grab active:cursor-grabbing"
+          onClick={e => e.stopPropagation()}
         >
           <motion.p 
             key={dzikirIndex}
@@ -342,106 +178,71 @@ export const TasbihPage = ({ onBack }: TasbihPageProps) => {
           </p>
         </motion.div>
 
-        {/* Counter Display */}
-        <div className="text-center mb-6">
-          <motion.span
-            key={count}
-            initial={{ scale: 1.2, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-7xl font-bold text-accent tabular-nums"
-          >
-            {count}
-          </motion.span>
-          <span className="text-2xl text-muted-foreground ml-2">/ {target}</span>
-          {fullRounds > 0 && (
-            <p className="text-sm text-primary mt-1">
-              🔄 {fullRounds} {language === 'id' ? 'putaran selesai' : 'rounds completed'}
-            </p>
-          )}
-        </div>
+        {/* Simple Circle Counter */}
+        <div className="relative w-64 h-64 mb-8">
+          {/* Background circle */}
+          <svg className="absolute inset-0 w-full h-full -rotate-90">
+            <circle
+              cx="128"
+              cy="128"
+              r="110"
+              fill="none"
+              stroke="hsl(var(--muted))"
+              strokeWidth="12"
+            />
+            {/* Progress circle */}
+            <motion.circle
+              cx="128"
+              cy="128"
+              r="110"
+              fill="none"
+              stroke="hsl(var(--primary))"
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeDasharray={2 * Math.PI * 110}
+              initial={{ strokeDashoffset: 2 * Math.PI * 110 }}
+              animate={{ strokeDashoffset: 2 * Math.PI * 110 * (1 - progress / 100) }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            />
+          </svg>
 
-        {/* Progress Bar */}
-        <div className="w-full h-2 bg-muted rounded-full mb-6 overflow-hidden">
-          <motion.div
-            className="h-full bg-primary rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.3 }}
-          />
-        </div>
-
-        {/* Vertical Bead List with scroll */}
-        <div 
-          className="flex-1 overflow-y-auto -mx-2 px-2"
-          style={{ maxHeight: '35vh' }}
-        >
-          <div className="flex flex-wrap justify-center gap-2 py-2">
-            {visibleBeads.map((bead) => (
-              <OctagonBead3D
-                key={bead.index}
-                index={bead.index}
-                isActive={bead.isActive}
-                isCurrent={bead.isCurrent}
-                onTap={handleTap}
-              />
-            ))}
+          {/* Center Content */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <motion.span
+              key={count}
+              initial={{ scale: 1.3, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-6xl font-bold text-accent tabular-nums"
+            >
+              {count}
+            </motion.span>
+            <span className="text-lg text-muted-foreground">/ {target}</span>
           </div>
         </div>
 
-        {/* Target Reached Animation */}
-        <AnimatePresence>
-          {targetReached && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-              onClick={() => setTargetReached(false)}
-            >
-              <motion.div
-                initial={{ y: 20 }}
-                animate={{ y: 0 }}
-                className="bg-card p-8 rounded-3xl text-center shadow-2xl"
-              >
-                <span className="text-6xl mb-4 block">✨</span>
-                <h3 className="text-2xl font-bold text-foreground mb-2">
-                  {language === 'id' ? 'Alhamdulillah!' : 'Alhamdulillah!'}
-                </h3>
-                <p className="text-muted-foreground">
-                  {language === 'id' ? 'Target tercapai' : 'Target reached'}
-                </p>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Tap Area */}
-        <motion.button
-          className="w-full py-6 mt-4 rounded-2xl bg-primary/10 border-2 border-dashed border-primary/30 text-primary font-medium"
-          whileTap={{ scale: 0.98, backgroundColor: 'hsl(var(--primary) / 0.2)' }}
-          onClick={handleTap}
-        >
-          {language === 'id' ? 'Ketuk di sini untuk menghitung' : 'Tap here to count'}
-        </motion.button>
+        {/* Tap Instruction */}
+        <p className="text-sm text-muted-foreground mb-8">
+          {language === 'id' ? 'Ketuk layar untuk menghitung' : 'Tap screen to count'}
+        </p>
 
         {/* Control Buttons */}
-        <div className="flex gap-4 mt-4 pb-4">
+        <div className="flex gap-4" onClick={e => e.stopPropagation()}>
           <Button
             variant="outline"
             size="lg"
             onClick={handleReset}
-            className="flex-1 gap-2"
+            className="gap-2"
           >
             <RotateCcw className="h-4 w-4" />
             Reset
           </Button>
           
-          <div className="relative flex-1">
+          <div className="relative">
             <Button
               variant="outline"
               size="lg"
               onClick={() => setShowTargetMenu(!showTargetMenu)}
-              className="w-full gap-2"
+              className="gap-2"
             >
               <Target className="h-4 w-4" />
               Target: {target}
@@ -477,6 +278,38 @@ export const TasbihPage = ({ onBack }: TasbihPageProps) => {
           </div>
         </div>
       </div>
+
+      {/* Target Reached Modal */}
+      <AnimatePresence>
+        {targetReached && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setTargetReached(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-card p-8 rounded-3xl text-center shadow-2xl mx-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <span className="text-6xl mb-4 block">✨</span>
+              <h3 className="text-2xl font-bold text-foreground mb-2">
+                Alhamdulillah!
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {language === 'id' ? 'Target tercapai' : 'Target reached'}
+              </p>
+              <Button onClick={() => setTargetReached(false)}>
+                {language === 'id' ? 'Lanjutkan' : 'Continue'}
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
