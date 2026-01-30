@@ -18,49 +18,31 @@ interface AyatCardShareProps {
   initialAyahIndex: number;
 }
 
-// Theme configurations - Vibrant solid colors
-type ThemeType = 'mercy' | 'reminder' | 'history';
+// Theme configurations - Vibrant solid colors like Spotify
+type ThemeType = 'green' | 'maroon' | 'navy' | 'coral';
 
 interface Theme {
   name: string;
   background: string;
-  textPrimary: string;
-  textSecondary: string;
-  textMuted: string;
 }
 
 const THEMES: Record<ThemeType, Theme> = {
-  mercy: {
-    name: 'Rahmat',
-    background: '#1B4332', // Deep forest green - Quran theme
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.95)',
-    textMuted: 'rgba(255,255,255,0.6)',
+  green: {
+    name: 'Hijau',
+    background: '#1B4332',
   },
-  reminder: {
-    name: 'Pengingat',
-    background: '#4A1942', // Deep maroon/burgundy
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.95)',
-    textMuted: 'rgba(255,255,255,0.6)',
+  maroon: {
+    name: 'Maroon',
+    background: '#722F37',
   },
-  history: {
-    name: 'Sejarah',
-    background: '#1A1A2E', // Deep navy/charcoal
-    textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.95)',
-    textMuted: 'rgba(255,255,255,0.6)',
+  navy: {
+    name: 'Biru',
+    background: '#1A1A2E',
   },
-};
-
-// Determine theme based on surah number
-const getSurahTheme = (surahNumber: number): ThemeType => {
-  const mercySurahs = [1, 12, 19, 36, 55, 56, 67, 78, 93, 94, 95, 97, 108, 110];
-  const historySurahs = [2, 3, 4, 5, 7, 10, 11, 14, 15, 18, 20, 21, 26, 27, 28, 37, 38, 40, 71];
-  
-  if (mercySurahs.includes(surahNumber)) return 'mercy';
-  if (historySurahs.includes(surahNumber)) return 'history';
-  return 'reminder';
+  coral: {
+    name: 'Coral',
+    background: '#E85D75',
+  },
 };
 
 // Check if text is "long"
@@ -68,18 +50,18 @@ const isLongText = (text: string): boolean => {
   return text.length > 150;
 };
 
-// Calculate font size based on text length
+// Calculate font size based on text length (for preview)
 const getArabicFontSize = (textLength: number): string => {
-  if (textLength > 300) return '1.375rem'; // 22px
-  if (textLength > 200) return '1.625rem'; // 26px
-  if (textLength > 100) return '1.875rem'; // 30px
-  return '2.25rem'; // 36px
+  if (textLength > 300) return '1.25rem';
+  if (textLength > 200) return '1.5rem';
+  if (textLength > 100) return '1.75rem';
+  return '2rem';
 };
 
 const getTranslationFontSize = (textLength: number): string => {
-  if (textLength > 250) return '0.9375rem'; // 15px
-  if (textLength > 150) return '1.0625rem'; // 17px
-  return '1.1875rem'; // 19px - Bold, readable
+  if (textLength > 250) return '0.875rem';
+  if (textLength > 150) return '1rem';
+  return '1.125rem';
 };
 
 export const AyatCardShare = ({ 
@@ -98,7 +80,7 @@ export const AyatCardShare = ({
   const [selectedAyahs, setSelectedAyahs] = useState<number[]>([initialAyahIndex]);
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState<ThemeType>(getSurahTheme(surahNumber));
+  const [currentTheme, setCurrentTheme] = useState<ThemeType>('green');
 
   const theme = THEMES[currentTheme];
 
@@ -106,9 +88,8 @@ export const AyatCardShare = ({
   useEffect(() => {
     if (isOpen) {
       setSelectedAyahs([initialAyahIndex]);
-      setCurrentTheme(getSurahTheme(surahNumber));
     }
-  }, [isOpen, initialAyahIndex, surahNumber]);
+  }, [isOpen, initialAyahIndex]);
 
   // Smart selection logic
   const canSelectMore = useMemo(() => {
@@ -159,50 +140,183 @@ export const AyatCardShare = ({
     });
   };
 
-  const handleExport = useCallback(async () => {
-    if (!cardRef.current) return;
+  // Generate full-screen story image
+  const generateStoryImage = useCallback(async (): Promise<Blob | null> => {
+    // Create a temporary container for the full-size story
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.width = '1080px';
+    container.style.height = '1920px';
+    document.body.appendChild(container);
+
+    // Calculate font sizes for full resolution
+    const arabicSize = combinedArabic.length > 300 ? '42px' : 
+                       combinedArabic.length > 200 ? '52px' : 
+                       combinedArabic.length > 100 ? '62px' : '72px';
     
-    setIsExporting(true);
+    const translationSize = combinedTranslation.length > 250 ? '32px' : 
+                            combinedTranslation.length > 150 ? '38px' : '44px';
+
+    container.innerHTML = `
+      <div style="
+        width: 1080px;
+        height: 1920px;
+        background: ${theme.background};
+        display: flex;
+        flex-direction: column;
+        padding: 80px 60px;
+        box-sizing: border-box;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      ">
+        <!-- Top Right Metadata -->
+        <div style="
+          position: absolute;
+          top: 80px;
+          right: 60px;
+          text-align: right;
+        ">
+          <p style="
+            font-size: 28px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            margin: 0;
+            letter-spacing: 0.5px;
+          ">${surahName}</p>
+          ${surahMeaning ? `<p style="
+            font-size: 22px;
+            color: rgba(255,255,255,0.5);
+            margin: 8px 0 0 0;
+          ">${surahMeaning}</p>` : ''}
+          <p style="
+            font-size: 22px;
+            color: rgba(255,255,255,0.4);
+            margin: 8px 0 0 0;
+          ">Juz ${juzNumber}</p>
+        </div>
+
+        <!-- Center Content -->
+        <div style="
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding-top: 100px;
+        ">
+          <!-- Arabic Text -->
+          <p style="
+            font-family: 'Amiri', serif;
+            font-size: ${arabicSize};
+            line-height: 2.2;
+            color: #FFFFFF;
+            text-align: right;
+            margin: 0 0 48px 0;
+            direction: rtl;
+          ">${combinedArabic}</p>
+
+          <!-- Translation -->
+          <p style="
+            font-size: ${translationSize};
+            font-weight: 600;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.95);
+            text-align: left;
+            margin: 0;
+          ">"${combinedTranslation}"</p>
+
+          <!-- Ayah Number -->
+          <p style="
+            font-size: 28px;
+            color: rgba(255,255,255,0.5);
+            margin: 32px 0 0 0;
+            text-align: left;
+          ">${ayahRangeText}</p>
+        </div>
+
+        <!-- Bottom Left Branding -->
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        ">
+          <div style="
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <span style="
+              font-size: 24px;
+              font-weight: 700;
+              color: #FFFFFF;
+              font-family: 'Amiri', serif;
+            ">إ</span>
+          </div>
+          <span style="
+            font-size: 28px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.6);
+          ">Istiqamah</span>
+        </div>
+      </div>
+    `;
+
     try {
-      const dataUrl = await toPng(cardRef.current, {
+      const dataUrl = await toPng(container.firstChild as HTMLElement, {
         quality: 1,
-        pixelRatio: 3, // High resolution for crisp text
+        pixelRatio: 1,
         width: 1080,
         height: 1920,
       });
       
-      const link = document.createElement('a');
-      link.download = `istiqamah-${surahName}-${ayahRangeText.replace(/\s/g, '')}.png`;
-      link.href = dataUrl;
-      link.click();
+      document.body.removeChild(container);
       
-      setExportSuccess(true);
-      setTimeout(() => setExportSuccess(false), 2000);
+      const response = await fetch(dataUrl);
+      return await response.blob();
+    } catch (error) {
+      document.body.removeChild(container);
+      console.error('Failed to generate image:', error);
+      return null;
+    }
+  }, [theme.background, combinedArabic, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText]);
+
+  const handleExport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const blob = await generateStoryImage();
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `istiqamah-${surahName}-${ayahRangeText.replace(/\s/g, '')}.png`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+        
+        setExportSuccess(true);
+        setTimeout(() => setExportSuccess(false), 2000);
+      }
     } catch (error) {
       console.error('Export failed:', error);
     } finally {
       setIsExporting(false);
     }
-  }, [surahName, ayahRangeText]);
+  }, [generateStoryImage, surahName, ayahRangeText]);
 
   const handleShare = useCallback(async () => {
-    if (!cardRef.current) return;
-    
     setIsExporting(true);
     try {
-      const dataUrl = await toPng(cardRef.current, {
-        quality: 1,
-        pixelRatio: 3,
-        width: 1080,
-        height: 1920,
-      });
-      
-      // Convert to blob
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
+      const blob = await generateStoryImage();
+      if (!blob) {
+        handleExport();
+        return;
+      }
+
       const file = new File([blob], `istiqamah-${surahName}.png`, { type: 'image/png' });
       
-      // Try native share first
+      // Try native share
       if (navigator.share && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -223,10 +337,10 @@ export const AyatCardShare = ({
     } finally {
       setIsExporting(false);
     }
-  }, [surahName, ayahRangeText, handleExport]);
+  }, [generateStoryImage, surahName, ayahRangeText, handleExport]);
 
   const cycleTheme = () => {
-    const themes: ThemeType[] = ['mercy', 'reminder', 'history'];
+    const themes: ThemeType[] = ['green', 'maroon', 'navy', 'coral'];
     const currentIndex = themes.indexOf(currentTheme);
     setCurrentTheme(themes[(currentIndex + 1) % themes.length]);
   };
@@ -284,77 +398,63 @@ export const AyatCardShare = ({
               </Button>
             </div>
 
-            {/* Spotify-Style Card Preview - 9:16 Aspect Ratio */}
+            {/* Preview Card - Shows how it will look */}
             <div 
               ref={cardRef}
               className="rounded-2xl overflow-hidden shadow-2xl mx-auto"
               style={{ 
                 background: theme.background,
                 aspectRatio: '9/16',
-                maxHeight: '60vh',
+                maxHeight: '55vh',
                 width: '100%',
-                maxWidth: '340px',
               }}
             >
-              {/* Full Card Content with generous padding */}
               <div 
-                className="w-full h-full flex flex-col relative"
-                style={{ 
-                  background: theme.background,
-                  padding: '32px 28px',
-                }}
+                className="w-full h-full flex flex-col relative p-6"
+                style={{ background: theme.background }}
               >
-                {/* Top Right - Metadata (Surah Name, Meaning, Juz) */}
-                <div 
-                  className="absolute top-0 right-0 text-right"
-                  style={{ 
-                    padding: '28px 24px',
-                  }}
-                >
+                {/* Top Right - Metadata */}
+                <div className="absolute top-4 right-4 text-right">
                   <p 
-                    className="font-semibold text-sm tracking-wide"
-                    style={{ color: theme.textMuted }}
+                    className="font-semibold text-xs tracking-wide"
+                    style={{ color: 'rgba(255,255,255,0.6)' }}
                   >
                     {surahName}
                   </p>
                   {surahMeaning && (
                     <p 
-                      className="text-xs mt-0.5"
-                      style={{ color: theme.textMuted, opacity: 0.8 }}
+                      className="text-[10px] mt-0.5"
+                      style={{ color: 'rgba(255,255,255,0.5)' }}
                     >
                       {surahMeaning}
                     </p>
                   )}
                   <p 
-                    className="text-xs mt-0.5"
-                    style={{ color: theme.textMuted, opacity: 0.7 }}
+                    className="text-[10px] mt-0.5"
+                    style={{ color: 'rgba(255,255,255,0.4)' }}
                   >
                     Juz {juzNumber}
                   </p>
                 </div>
 
                 {/* Center - Main Content */}
-                <div className="flex-1 flex flex-col justify-center">
-                  {/* Arabic Text - Large, clean, left aligned */}
+                <div className="flex-1 flex flex-col justify-center pt-8">
                   <p 
-                    className="font-arabic leading-[2.2] mb-6"
+                    className="font-arabic leading-[2.2] mb-4 text-white"
                     style={{ 
-                      color: theme.textPrimary,
                       fontSize: getArabicFontSize(combinedArabic.length),
                       textAlign: 'right',
-                      fontWeight: 400,
                     }}
                     dir="rtl"
                   >
                     {combinedArabic}
                   </p>
 
-                  {/* Translation - Bold, readable, left aligned */}
                   {combinedTranslation && (
                     <p 
                       className="leading-relaxed font-semibold"
                       style={{ 
-                        color: theme.textSecondary,
+                        color: 'rgba(255,255,255,0.95)',
                         fontSize: getTranslationFontSize(combinedTranslation.length),
                         textAlign: 'left',
                       }}
@@ -363,36 +463,25 @@ export const AyatCardShare = ({
                     </p>
                   )}
 
-                  {/* Ayah Number */}
                   <p 
-                    className="mt-4 text-sm"
-                    style={{ color: theme.textMuted }}
+                    className="mt-3 text-xs"
+                    style={{ color: 'rgba(255,255,255,0.5)' }}
                   >
                     {ayahRangeText}
                   </p>
                 </div>
 
-                {/* Bottom Left - Logo Branding */}
-                <div 
-                  className="absolute bottom-0 left-0 flex items-center gap-2"
-                  style={{ padding: '28px 24px' }}
-                >
+                {/* Bottom Left - Logo */}
+                <div className="flex items-center gap-2">
                   <div 
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ 
-                      background: 'rgba(255,255,255,0.15)',
-                    }}
+                    className="w-6 h-6 rounded-md flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.15)' }}
                   >
-                    <span 
-                      className="text-base font-bold"
-                      style={{ color: theme.textPrimary }}
-                    >
-                      إ
-                    </span>
+                    <span className="text-xs font-bold text-white font-arabic">إ</span>
                   </div>
                   <span 
-                    className="text-sm font-medium"
-                    style={{ color: theme.textMuted }}
+                    className="text-xs font-medium"
+                    style={{ color: 'rgba(255,255,255,0.6)' }}
                   >
                     Istiqamah
                   </span>
@@ -491,6 +580,12 @@ export const AyatCardShare = ({
                 {language === 'id' ? 'Bagikan' : 'Share'}
               </Button>
             </div>
+
+            <p className="text-xs text-center text-white/40">
+              {language === 'id' 
+                ? 'Gambar akan di-generate dalam resolusi 1080x1920 (Story)' 
+                : 'Image will be generated at 1080x1920 (Story size)'}
+            </p>
           </div>
         </motion.div>
       )}
