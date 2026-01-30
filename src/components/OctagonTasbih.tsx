@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, RotateCcw, Target, Volume2, VolumeX, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-interface TasbihDigitalProps {
+interface OctagonTasbihProps {
   isOpen: boolean;
   onClose: () => void;
 }
@@ -101,7 +101,7 @@ const generateOctagonPositions = (totalBeads: number, radius: number) => {
   return positions;
 };
 
-export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
+export const OctagonTasbih = ({ isOpen, onClose }: OctagonTasbihProps) => {
   const { language } = useLanguage();
   const [count, setCount] = useState(0);
   const [target, setTarget] = useState(33);
@@ -115,7 +115,7 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
   const progress = (count / target) * 100;
   
   // Generate bead positions
-  const beadPositions = useMemo(() => generateOctagonPositions(TOTAL_BEADS, 100), []);
+  const beadPositions = useMemo(() => generateOctagonPositions(TOTAL_BEADS, 110), []);
   
   // Calculate which beads are "counted"
   const countedBeads = count % TOTAL_BEADS;
@@ -146,17 +146,14 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
     triggerHaptic('light');
   };
 
-  const handleSwipe = (info: PanInfo) => {
-    if (Math.abs(info.offset.x) > 50) {
-      const direction = info.offset.x > 0 ? -1 : 1;
-      setDzikirIndex(prev => {
-        const newIndex = prev + direction;
-        if (newIndex < 0) return DZIKIR_PRESETS.length - 1;
-        if (newIndex >= DZIKIR_PRESETS.length) return 0;
-        return newIndex;
-      });
-      triggerHaptic('light');
-    }
+  const handleSwipe = (direction: number) => {
+    setDzikirIndex(prev => {
+      const newIndex = prev + direction;
+      if (newIndex < 0) return DZIKIR_PRESETS.length - 1;
+      if (newIndex >= DZIKIR_PRESETS.length) return 0;
+      return newIndex;
+    });
+    triggerHaptic('light');
   };
 
   return (
@@ -192,7 +189,11 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
             <motion.div
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
-              onDragEnd={(_, info) => handleSwipe(info)}
+              onDragEnd={(_, info) => {
+                if (Math.abs(info.offset.x) > 50) {
+                  handleSwipe(info.offset.x > 0 ? -1 : 1);
+                }
+              }}
               className="text-center mb-6 cursor-grab active:cursor-grabbing"
               onClick={e => e.stopPropagation()}
             >
@@ -214,21 +215,18 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
                   />
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">
-                ← {language === 'id' ? 'Geser untuk ganti dzikir' : 'Swipe to change'} →
-              </p>
             </motion.div>
 
             {/* Octagon Tasbih */}
             <motion.div
-              className="relative w-64 h-64 mb-6"
+              className="relative w-72 h-72 mb-6"
               onClick={e => e.stopPropagation()}
             >
               {/* Octagon outline */}
-              <svg className="absolute inset-0 w-full h-full" viewBox="-130 -130 260 260">
+              <svg className="absolute inset-0 w-full h-full" viewBox="-140 -140 280 280">
                 {/* Octagon path */}
                 <polygon
-                  points="-100,-42 -42,-100 42,-100 100,-42 100,42 42,100 -42,100 -100,42"
+                  points="-110,-45 -45,-110 45,-110 110,-45 110,45 45,110 -45,110 -110,45"
                   fill="none"
                   stroke="hsl(var(--border))"
                   strokeWidth="2"
@@ -242,7 +240,7 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
                 animate={{ rotate: -rotationOffset }}
                 transition={{ type: "spring", stiffness: 200, damping: 25 }}
               >
-                <svg className="w-full h-full" viewBox="-130 -130 260 260">
+                <svg className="w-full h-full" viewBox="-140 -140 280 280">
                   {beadPositions.map((pos, index) => {
                     const isCounted = index < countedBeads;
                     const isCurrentBead = index === countedBeads - 1;
@@ -252,14 +250,14 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
                         key={index}
                         cx={pos.x}
                         cy={pos.y}
-                        r={7}
+                        r={8}
                         initial={false}
                         animate={{
                           fill: isCounted 
                             ? "hsl(var(--primary))" 
                             : "hsl(var(--muted))",
                           scale: isCurrentBead ? 1.3 : 1,
-                          filter: isCurrentBead ? "drop-shadow(0 0 6px hsl(var(--primary)))" : "none",
+                          filter: isCurrentBead ? "drop-shadow(0 0 8px hsl(var(--primary)))" : "none",
                         }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
                         stroke={isCounted ? "hsl(var(--primary-glow))" : "hsl(var(--border))"}
@@ -289,27 +287,27 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
               </div>
 
               {/* Progress Ring (outer) */}
-              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="-130 -130 260 260">
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="-140 -140 280 280">
                 <circle
                   cx="0"
                   cy="0"
-                  r="120"
+                  r="130"
                   fill="none"
                   stroke="hsl(var(--muted))"
-                  strokeWidth="3"
+                  strokeWidth="4"
                   opacity="0.3"
                 />
                 <motion.circle
                   cx="0"
                   cy="0"
-                  r="120"
+                  r="130"
                   fill="none"
                   stroke="hsl(var(--primary))"
-                  strokeWidth="3"
+                  strokeWidth="4"
                   strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 120}
-                  initial={{ strokeDashoffset: 2 * Math.PI * 120 }}
-                  animate={{ strokeDashoffset: 2 * Math.PI * 120 * (1 - progress / 100) }}
+                  strokeDasharray={2 * Math.PI * 130}
+                  initial={{ strokeDashoffset: 2 * Math.PI * 130 }}
+                  animate={{ strokeDashoffset: 2 * Math.PI * 130 * (1 - progress / 100) }}
                   transition={{ duration: 0.3 }}
                 />
               </svg>

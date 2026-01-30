@@ -17,8 +17,10 @@ import {
   SkipForward,
   SkipBack,
   VolumeX,
-  X
+  X,
+  Share2
 } from "lucide-react";
+import { AyatCardShare } from "@/components/AyatCardShare";
 import { useQuran, Surah, SurahDetail, Ayah } from "@/hooks/useQuran";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -261,6 +263,7 @@ const AyahCard = ({
   isPlaying,
   onPlay,
   onPause,
+  onShare,
 }: { 
   ayah: Ayah; 
   surahNumber: number;
@@ -269,6 +272,7 @@ const AyahCard = ({
   isPlaying: boolean;
   onPlay: () => void;
   onPause: () => void;
+  onShare: () => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -352,6 +356,14 @@ const AyahCard = ({
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={onShare}
+              >
+                <Share2 className="h-4 w-4" />
               </Button>
               <Button 
                 variant="ghost" 
@@ -493,6 +505,7 @@ const SurahDetailView = ({
   const [playingAyahId, setPlayingAyahId] = useState<number | null>(null);
   const [isPlayingAll, setIsPlayingAll] = useState(false);
   const ayahRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const [shareAyahIndex, setShareAyahIndex] = useState<number | null>(null);
 
   // Save last read when surah is opened
   useEffect(() => {
@@ -706,10 +719,24 @@ const SurahDetailView = ({
               isPlaying={playingAyahId === ayah.number}
               onPlay={() => handlePlaySingleAyah(ayah)}
               onPause={() => stopGlobalAudio()}
+              onShare={() => setShareAyahIndex(index)}
             />
           </motion.div>
         ))}
       </div>
+
+      {/* Ayat Card Share Modal */}
+      {shareAyahIndex !== null && (
+        <AyatCardShare
+          isOpen={shareAyahIndex !== null}
+          onClose={() => setShareAyahIndex(null)}
+          surahName={surah.englishName}
+          surahArabic={surah.name}
+          surahNumber={surah.number}
+          ayahs={surah.ayahs}
+          initialAyahIndex={shareAyahIndex}
+        />
+      )}
     </div>
   );
 };
