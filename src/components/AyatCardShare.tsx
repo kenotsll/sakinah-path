@@ -292,8 +292,14 @@ export const AyatCardShare = ({
         const link = document.createElement('a');
         link.download = `istiqamah-${surahName}-${ayahRangeText.replace(/\s/g, '')}.png`;
         link.href = url;
+        // iOS/Safari can ignore programmatic clicks unless the element is in the DOM.
+        // Appending + removing makes the gesture more reliable across mobile browsers.
+        document.body.appendChild(link);
         link.click();
-        URL.revokeObjectURL(url);
+        link.remove();
+
+        // Revoke a bit later to avoid cancelling the download on some browsers.
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
         
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 2000);
