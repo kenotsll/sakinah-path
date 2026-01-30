@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Share2, Download, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,46 +16,44 @@ interface AyatCardShareProps {
   initialAyahIndex: number;
 }
 
-// Theme configurations based on surah content
+// Theme configurations - Spotify-style solid colors
 type ThemeType = 'mercy' | 'reminder' | 'history';
 
 interface Theme {
   name: string;
   background: string;
+  cardBackground: string;
   textPrimary: string;
   textSecondary: string;
-  accent: string;
 }
 
 const THEMES: Record<ThemeType, Theme> = {
   mercy: {
     name: 'Rahmat',
-    background: '#2D5A4C', // Sage/Emerald
+    background: '#1a3d34', // Dark sage background
+    cardBackground: '#2D5A4C', // Sage/Emerald card
     textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.8)',
-    accent: '#8FBC8F',
+    textSecondary: 'rgba(255,255,255,0.85)',
   },
   reminder: {
     name: 'Pengingat',
-    background: '#2C3E50', // Charcoal/Deep Blue
+    background: '#1a2530', // Dark blue background
+    cardBackground: '#2C3E50', // Charcoal/Deep Blue card
     textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.8)',
-    accent: '#5DADE2',
+    textSecondary: 'rgba(255,255,255,0.85)',
   },
   history: {
     name: 'Sejarah',
-    background: '#5D4E37', // Soft Sand/Earth Tone
+    background: '#2a2218', // Dark earth background
+    cardBackground: '#5D4E37', // Soft Sand/Earth Tone card
     textPrimary: '#FFFFFF',
-    textSecondary: 'rgba(255,255,255,0.85)',
-    accent: '#D4A574',
+    textSecondary: 'rgba(255,255,255,0.9)',
   },
 };
 
-// Determine theme based on surah number (simplified logic)
+// Determine theme based on surah number
 const getSurahTheme = (surahNumber: number): ThemeType => {
-  // Surahs about mercy, paradise, good news
   const mercySurahs = [1, 12, 19, 36, 55, 56, 67, 78, 93, 94, 95, 97, 108, 110];
-  // Surahs about history and prophets
   const historySurahs = [2, 3, 4, 5, 7, 10, 11, 14, 15, 18, 20, 21, 26, 27, 28, 37, 38, 40, 71];
   
   if (mercySurahs.includes(surahNumber)) return 'mercy';
@@ -63,36 +61,9 @@ const getSurahTheme = (surahNumber: number): ThemeType => {
   return 'reminder';
 };
 
-// Calculate if text is "long" (more than 2 lines approximately)
+// Check if text is "long"
 const isLongText = (text: string): boolean => {
   return text.length > 150;
-};
-
-// Auto-scale font size based on text length
-const getArabicFontSize = (text: string, maxAyahs: number): number => {
-  const totalLength = text.length;
-  if (maxAyahs === 1) {
-    if (totalLength > 300) return 24;
-    if (totalLength > 200) return 28;
-    if (totalLength > 100) return 32;
-    return 36;
-  }
-  // Multiple ayahs
-  if (totalLength > 500) return 20;
-  if (totalLength > 300) return 24;
-  return 28;
-};
-
-const getTranslationFontSize = (text: string, maxAyahs: number): number => {
-  const totalLength = text.length;
-  if (maxAyahs === 1) {
-    if (totalLength > 200) return 12;
-    if (totalLength > 100) return 14;
-    return 16;
-  }
-  if (totalLength > 400) return 11;
-  if (totalLength > 200) return 12;
-  return 14;
 };
 
 export const AyatCardShare = ({ 
@@ -113,15 +84,20 @@ export const AyatCardShare = ({
 
   const theme = THEMES[currentTheme];
 
+  // Reset when modal opens with new ayah
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedAyahs([initialAyahIndex]);
+      setCurrentTheme(getSurahTheme(surahNumber));
+    }
+  }, [isOpen, initialAyahIndex, surahNumber]);
+
   // Smart selection logic
   const canSelectMore = useMemo(() => {
     if (selectedAyahs.length >= 5) return false;
-    
-    // Check if any selected ayah is "long"
     const hasLongAyah = selectedAyahs.some(idx => 
       ayahs[idx] && isLongText(ayahs[idx].text)
     );
-    
     return !hasLongAyah && selectedAyahs.length < 5;
   }, [selectedAyahs, ayahs]);
 
@@ -133,9 +109,6 @@ export const AyatCardShare = ({
 
   const combinedArabic = selectedContent.map(a => a.text).join(' ');
   const combinedTranslation = selectedContent.map(a => a.translation).join(' ');
-  
-  const arabicFontSize = getArabicFontSize(combinedArabic, selectedContent.length);
-  const translationFontSize = getTranslationFontSize(combinedTranslation || '', selectedContent.length);
 
   // Ayah range text
   const ayahRangeText = useMemo(() => {
@@ -151,21 +124,16 @@ export const AyatCardShare = ({
   const toggleAyahSelection = (index: number) => {
     setSelectedAyahs(prev => {
       if (prev.includes(index)) {
-        // Don't allow deselecting if only one selected
         if (prev.length === 1) return prev;
         return prev.filter(i => i !== index);
       }
       
-      // Check if new ayah is long
       if (ayahs[index] && isLongText(ayahs[index].text)) {
-        // If selecting a long ayah, only select that one
         return [index];
       }
       
-      // Check if already at max
       if (prev.length >= 5) return prev;
       
-      // Check if any existing is long
       const hasLong = prev.some(i => ayahs[i] && isLongText(ayahs[i].text));
       if (hasLong) return prev;
       
@@ -180,18 +148,11 @@ export const AyatCardShare = ({
     try {
       const dataUrl = await toPng(cardRef.current, {
         quality: 1,
-        pixelRatio: 3, // High DPI for crisp text
-        width: 1080,
-        height: 1920,
-        style: {
-          transform: 'scale(1)',
-          transformOrigin: 'top left',
-        },
+        pixelRatio: 2,
       });
       
-      // Create download link
       const link = document.createElement('a');
-      link.download = `istiqamah-${surahName}-ayat${ayahRangeText.replace(/\s/g, '')}.png`;
+      link.download = `istiqamah-${surahName}-${ayahRangeText.replace(/\s/g, '')}.png`;
       link.href = dataUrl;
       link.click();
       
@@ -211,30 +172,32 @@ export const AyatCardShare = ({
     try {
       const dataUrl = await toPng(cardRef.current, {
         quality: 1,
-        pixelRatio: 3,
-        width: 1080,
-        height: 1920,
+        pixelRatio: 2,
       });
       
-      // Convert to blob for sharing
+      // Convert to blob
       const response = await fetch(dataUrl);
       const blob = await response.blob();
       const file = new File([blob], `istiqamah-${surahName}.png`, { type: 'image/png' });
       
+      // Try native share first
       if (navigator.share && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: `${surahName} - ${ayahRangeText}`,
           text: `${surahName} ${ayahRangeText} - Istiqamah App`,
         });
+        setExportSuccess(true);
+        setTimeout(() => setExportSuccess(false), 2000);
       } else {
         // Fallback to download
         handleExport();
       }
     } catch (error) {
-      console.error('Share failed:', error);
-      // Fallback to download
-      handleExport();
+      if ((error as Error).name !== 'AbortError') {
+        console.error('Share failed:', error);
+        handleExport();
+      }
     } finally {
       setIsExporting(false);
     }
@@ -246,7 +209,6 @@ export const AyatCardShare = ({
     setCurrentTheme(themes[(currentIndex + 1) % themes.length]);
   };
 
-  // Navigate ayahs
   const navigateAyah = (direction: 'prev' | 'next') => {
     const currentFirst = Math.min(...selectedAyahs);
     const newIndex = direction === 'prev' ? currentFirst - 1 : currentFirst + 1;
@@ -262,134 +224,132 @@ export const AyatCardShare = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl overflow-y-auto"
+          className="fixed inset-0 z-[100] overflow-y-auto"
+          style={{ background: theme.background }}
         >
           {/* Header */}
-          <div className="sticky top-0 bg-background/90 backdrop-blur-lg border-b border-border px-4 py-3 flex items-center justify-between z-10">
-            <Button variant="ghost" size="icon" onClick={onClose}>
+          <div 
+            className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between"
+            style={{ background: theme.background }}
+          >
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose}
+              className="text-white/80 hover:text-white hover:bg-white/10"
+            >
               <X className="h-5 w-5" />
             </Button>
-            <h2 className="text-base font-semibold text-foreground">
+            <h2 className="text-base font-semibold text-white">
               {language === 'id' ? 'Bagikan Ayat' : 'Share Verse'}
             </h2>
             <div className="w-10" />
           </div>
 
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4 pb-8">
             {/* Theme Selector */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-white/70">
                 {language === 'id' ? 'Tema:' : 'Theme:'}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={cycleTheme}
-                className="gap-2"
+                className="gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
               >
                 <div 
                   className="w-4 h-4 rounded-full" 
-                  style={{ background: theme.background }}
+                  style={{ background: theme.cardBackground }}
                 />
                 {theme.name}
               </Button>
             </div>
 
-            {/* Card Preview - Scaled down for preview */}
-            <div className="relative overflow-hidden rounded-2xl shadow-lg">
+            {/* Spotify-Style Card Preview */}
+            <div 
+              ref={cardRef}
+              className="rounded-2xl overflow-hidden shadow-2xl"
+              style={{ 
+                background: theme.background,
+                aspectRatio: '9/16',
+                maxHeight: '65vh',
+              }}
+            >
+              {/* Full Card with centered content */}
               <div 
-                className="transform scale-[0.32] origin-top-left"
-                style={{ width: 1080, height: 1920 }}
+                className="w-full h-full flex flex-col p-6"
+                style={{ background: theme.background }}
               >
-                <div
-                  ref={cardRef}
-                  className="w-full h-full flex flex-col items-center justify-center p-16"
-                  style={{ 
-                    background: theme.background,
-                    fontFamily: "'Amiri', 'Plus Jakarta Sans', serif",
-                  }}
-                >
-                  {/* Content Container */}
-                  <div className="flex-1 flex flex-col items-center justify-center w-full max-w-[900px]">
-                    {/* Arabic Text */}
-                    <p 
-                      className="text-center leading-[1.8] mb-12"
-                      style={{ 
-                        color: theme.textPrimary,
-                        fontSize: `${arabicFontSize}px`,
-                        fontFamily: "'Amiri', serif",
-                        direction: 'rtl',
-                      }}
-                      dir="rtl"
-                    >
-                      {combinedArabic}
+                {/* Top - Surah Info */}
+                <div className="flex items-center gap-3 mb-auto">
+                  <div 
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ background: theme.cardBackground }}
+                  >
+                    <span className="text-xl font-bold" style={{ color: theme.textPrimary }}>
+                      {surahNumber}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-base" style={{ color: theme.textPrimary }}>
+                      {surahName}
                     </p>
+                    <p className="text-sm" style={{ color: theme.textSecondary }}>
+                      {ayahRangeText}
+                    </p>
+                  </div>
+                </div>
 
-                    {/* Divider */}
-                    <div 
-                      className="w-32 h-1 rounded-full mb-12"
-                      style={{ background: theme.accent }}
-                    />
+                {/* Center - Main Content Card */}
+                <div 
+                  className="rounded-2xl p-6 my-4"
+                  style={{ background: theme.cardBackground }}
+                >
+                  {/* Arabic Text - Large and readable */}
+                  <p 
+                    className="text-center leading-[2] mb-6 font-arabic"
+                    style={{ 
+                      color: theme.textPrimary,
+                      fontSize: combinedArabic.length > 200 ? '1.25rem' : combinedArabic.length > 100 ? '1.5rem' : '1.75rem',
+                    }}
+                    dir="rtl"
+                  >
+                    {combinedArabic}
+                  </p>
 
-                    {/* Translation */}
+                  {/* Translation - Readable size */}
+                  {combinedTranslation && (
                     <p 
                       className="text-center leading-relaxed"
                       style={{ 
                         color: theme.textSecondary,
-                        fontSize: `${translationFontSize}px`,
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        fontSize: combinedTranslation.length > 200 ? '0.875rem' : '1rem',
                       }}
                     >
-                      {combinedTranslation}
+                      "{combinedTranslation}"
                     </p>
-                  </div>
+                  )}
+                </div>
 
-                  {/* Footer */}
-                  <div className="w-full flex items-end justify-between mt-auto pt-16">
-                    {/* Branding - Left */}
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-12 h-12 rounded-xl flex items-center justify-center"
-                        style={{ background: theme.accent }}
-                      >
-                        <span className="text-2xl font-bold" style={{ color: theme.background }}>
-                          إ
-                        </span>
-                      </div>
-                      <span 
-                        className="text-lg font-medium"
-                        style={{ color: theme.textSecondary }}
-                      >
-                        Istiqamah
-                      </span>
-                    </div>
-
-                    {/* Surah Info - Right */}
-                    <div className="text-right">
-                      <p 
-                        className="text-xl font-medium"
-                        style={{ color: theme.textPrimary }}
-                      >
-                        {surahName}
-                      </p>
-                      <p 
-                        className="text-lg"
-                        style={{ color: theme.textSecondary }}
-                      >
-                        {ayahRangeText}
-                      </p>
-                    </div>
+                {/* Bottom - Branding */}
+                <div className="flex items-center gap-2 mt-auto">
+                  <div 
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: theme.cardBackground }}
+                  >
+                    <span className="text-sm font-bold" style={{ color: theme.textPrimary }}>
+                      إ
+                    </span>
                   </div>
+                  <span 
+                    className="text-sm font-medium"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    Istiqamah
+                  </span>
                 </div>
               </div>
-              
-              {/* Scaled container overlay for correct height */}
-              <div 
-                className="absolute inset-0 pointer-events-none" 
-                style={{ 
-                  paddingBottom: `${(1920 / 1080) * 100}%`,
-                }}
-              />
             </div>
 
             {/* Ayah Navigation */}
@@ -399,10 +359,11 @@ export const AyatCardShare = ({
                 size="icon"
                 onClick={() => navigateAyah('prev')}
                 disabled={Math.min(...selectedAyahs) === 0}
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white disabled:opacity-30"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-white/80">
                 {ayahRangeText}
               </span>
               <Button
@@ -410,6 +371,7 @@ export const AyatCardShare = ({
                 size="icon"
                 onClick={() => navigateAyah('next')}
                 disabled={Math.max(...selectedAyahs) >= ayahs.length - 1}
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white disabled:opacity-30"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -417,14 +379,14 @@ export const AyatCardShare = ({
 
             {/* Multi-select hint */}
             {canSelectMore && (
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-xs text-center text-white/60">
                 {language === 'id' 
                   ? 'Tap ayat di bawah untuk menambah pilihan (maks 5 ayat pendek)'
                   : 'Tap verses below to add (max 5 short verses)'}
               </p>
             )}
 
-            {/* Ayah Selection - Horizontal scroll */}
+            {/* Ayah Selection Pills */}
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
               {ayahs.slice(Math.max(0, initialAyahIndex - 2), initialAyahIndex + 5).map((ayah, idx) => {
                 const realIndex = Math.max(0, initialAyahIndex - 2) + idx;
@@ -435,13 +397,16 @@ export const AyatCardShare = ({
                   <button
                     key={ayah.number}
                     onClick={() => toggleAyahSelection(realIndex)}
-                    className={`shrink-0 px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                       isSelected 
-                        ? 'bg-primary text-primary-foreground border-primary' 
-                        : 'bg-card border-border hover:bg-muted'
+                        ? 'text-white' 
+                        : 'text-white/70 hover:text-white'
                     }`}
+                    style={{
+                      background: isSelected ? theme.cardBackground : 'rgba(255,255,255,0.1)',
+                    }}
                   >
-                    <span className="font-medium">Ayat {ayah.numberInSurah}</span>
+                    Ayat {ayah.numberInSurah}
                     {isLong && (
                       <span className="ml-1 text-[10px] opacity-70">
                         (panjang)
@@ -452,11 +417,11 @@ export const AyatCardShare = ({
               })}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
+            {/* Action Buttons - Fixed at bottom */}
+            <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
-                className="flex-1 gap-2"
+                className="flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                 onClick={handleExport}
                 disabled={isExporting}
               >
@@ -473,9 +438,13 @@ export const AyatCardShare = ({
                 )}
               </Button>
               <Button
-                className="flex-1 gap-2 gradient-hero text-primary-foreground"
+                className="flex-1 gap-2"
                 onClick={handleShare}
                 disabled={isExporting}
+                style={{ 
+                  background: theme.cardBackground,
+                  color: theme.textPrimary,
+                }}
               >
                 <Share2 className="h-4 w-4" />
                 {language === 'id' ? 'Bagikan' : 'Share'}
