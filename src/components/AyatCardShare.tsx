@@ -106,12 +106,42 @@ export const AyatCardShare = ({
     return sorted.map(idx => ayahs[idx]).filter(Boolean);
   }, [selectedAyahs, ayahs]);
 
-  // Add an end-of-ayah stop marker ONLY for the share card (not the Quran reading UI)
-  // If we can't render the circled number reliably across fonts, we keep it simple: ۝
-  const combinedArabic = selectedContent
-    .map((a) => `${a.text?.trim?.() ?? a.text} ۝`)
-    .join(' ');
+  // Build Arabic text with circled ayah numbers as end-of-ayah markers
+  // For the export image, we'll inject HTML with CSS-styled circles
+  // For the preview, we use a simpler approach
+  const combinedArabicText = selectedContent.map(a => a.text?.trim?.() ?? a.text).join(' ');
   const combinedTranslation = selectedContent.map(a => a.translation).join(' ');
+
+  // Generate HTML for Arabic text with circled numbers (for image export)
+  const generateArabicWithCircledNumbers = () => {
+    return selectedContent
+      .map((a) => {
+        const text = a.text?.trim?.() ?? a.text;
+        const num = a.numberInSurah;
+        // Create a circled number using inline CSS
+        const circledNum = `<span style="
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 1.4em;
+          height: 1.4em;
+          border: 2px solid rgba(255,255,255,0.5);
+          border-radius: 50%;
+          font-size: 0.5em;
+          margin: 0 0.2em;
+          vertical-align: middle;
+          color: rgba(255,255,255,0.7);
+          font-family: 'Plus Jakarta Sans', sans-serif;
+        ">${num}</span>`;
+        return `${text} ${circledNum}`;
+      })
+      .join(' ');
+  };
+
+  // For preview display (simpler, text-based)
+  const combinedArabicPreview = selectedContent
+    .map((a) => `${a.text?.trim?.() ?? a.text} (${a.numberInSurah})`)
+    .join(' ');
 
   // Ayah range text
   const ayahRangeText = useMemo(() => {
@@ -155,12 +185,15 @@ export const AyatCardShare = ({
     document.body.appendChild(container);
 
     // Calculate font sizes for full resolution
-    const arabicSize = combinedArabic.length > 300 ? '42px' : 
-                       combinedArabic.length > 200 ? '52px' : 
-                       combinedArabic.length > 100 ? '62px' : '72px';
+    const arabicSize = combinedArabicText.length > 300 ? '42px' : 
+                       combinedArabicText.length > 200 ? '52px' : 
+                       combinedArabicText.length > 100 ? '62px' : '72px';
     
     const translationSize = combinedTranslation.length > 250 ? '32px' : 
                             combinedTranslation.length > 150 ? '38px' : '44px';
+
+    // Generate Arabic HTML with circled numbers
+    const arabicHtml = generateArabicWithCircledNumbers();
 
     container.innerHTML = `
       <div style="
@@ -207,8 +240,8 @@ export const AyatCardShare = ({
           justify-content: center;
           padding-top: 100px;
         ">
-          <!-- Arabic Text -->
-          <p style="
+          <!-- Arabic Text with circled ayah numbers -->
+          <div style="
             font-family: 'Amiri', serif;
             font-size: ${arabicSize};
             line-height: 2.2;
@@ -216,7 +249,7 @@ export const AyatCardShare = ({
             text-align: right;
             margin: 0 0 48px 0;
             direction: rtl;
-          ">${combinedArabic}</p>
+          ">${arabicHtml}</div>
 
           <!-- Translation -->
           <p style="
@@ -294,7 +327,7 @@ export const AyatCardShare = ({
       console.error('Failed to generate image:', error);
       return null;
     }
-  }, [theme.background, combinedArabic, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText]);
+  }, [theme.background, combinedArabicText, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText, generateArabicWithCircledNumbers]);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
@@ -461,12 +494,12 @@ export const AyatCardShare = ({
                   <p 
                     className="font-arabic leading-[2.2] mb-4 text-white"
                     style={{ 
-                      fontSize: getArabicFontSize(combinedArabic.length),
+                      fontSize: getArabicFontSize(combinedArabicText.length),
                       textAlign: 'right',
                     }}
                     dir="rtl"
                   >
-                    {combinedArabic}
+                    {combinedArabicPreview}
                   </p>
 
                   {combinedTranslation && (
