@@ -23,6 +23,7 @@ const Index = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showTasbih, setShowTasbih] = useState(false);
+  const [showAyatShare, setShowAyatShare] = useState(false);
   // State for navigating to specific ayah from carousel bookmark
   const [pendingAyah, setPendingAyah] = useState<{ surahNumber: number; ayahNumber: number } | null>(null);
 
@@ -64,6 +65,7 @@ const Index = () => {
             initialSurah={pendingAyah?.surahNumber}
             initialAyah={pendingAyah?.ayahNumber}
             onNavigated={() => setPendingAyah(null)}
+            onShareModalChange={setShowAyatShare}
           />
         );
       case "guide":
@@ -109,9 +111,9 @@ const Index = () => {
     setShowCalendar(isOpen);
   };
 
-  // Auto-hide footer conditions: sub-pages OR calendar modal open (NOT Quran page anymore)
+  // Auto-hide footer conditions: sub-pages, calendar modal open, or ayat share modal open
   const isSubPage = showReflection || showFAQ || showProfile;
-  const shouldHideFooter = isSubPage || showCalendar;
+  const shouldHideFooter = isSubPage || showCalendar || showAyatShare;
 
   return (
     <div className="min-h-screen bg-background">

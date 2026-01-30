@@ -496,16 +496,23 @@ const SurahDetailView = ({
   surah, 
   onBack,
   scrollToAyah,
+  onShareModalChange,
 }: { 
   surah: SurahDetail; 
   onBack: () => void;
   scrollToAyah?: number | null;
+  onShareModalChange?: (isOpen: boolean) => void;
 }) => {
   const { language } = useLanguage();
   const [playingAyahId, setPlayingAyahId] = useState<number | null>(null);
   const [isPlayingAll, setIsPlayingAll] = useState(false);
   const ayahRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [shareAyahIndex, setShareAyahIndex] = useState<number | null>(null);
+
+  // Notify parent when share modal opens/closes
+  useEffect(() => {
+    onShareModalChange?.(shareAyahIndex !== null);
+  }, [shareAyahIndex, onShareModalChange]);
 
   // Save last read when surah is opened
   useEffect(() => {
@@ -746,9 +753,10 @@ interface QuranPageProps {
   initialSurah?: number;
   initialAyah?: number;
   onNavigated?: () => void;
+  onShareModalChange?: (isOpen: boolean) => void;
 }
 
-export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageProps) => {
+export const QuranPage = ({ initialSurah, initialAyah, onNavigated, onShareModalChange }: QuranPageProps) => {
   const { t, language } = useLanguage();
   const { 
     surahs, 
@@ -826,7 +834,14 @@ export const QuranPage = ({ initialSurah, initialAyah, onNavigated }: QuranPageP
   };
 
   if (currentSurah) {
-    return <SurahDetailView surah={currentSurah} onBack={handleBack} scrollToAyah={scrollToAyah} />;
+    return (
+      <SurahDetailView 
+        surah={currentSurah} 
+        onBack={handleBack} 
+        scrollToAyah={scrollToAyah} 
+        onShareModalChange={onShareModalChange}
+      />
+    );
   }
 
   return (
