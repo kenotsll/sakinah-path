@@ -279,37 +279,6 @@ export const TasbihPage = ({ onBack }: TasbihPageProps) => {
         </div>
       </div>
 
-      {/* Target Reached Modal */}
-      <AnimatePresence>
-        {targetReached && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-            onClick={() => setTargetReached(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.8, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-card p-8 rounded-3xl text-center shadow-2xl mx-6"
-              onClick={e => e.stopPropagation()}
-            >
-              <span className="text-6xl mb-4 block">✨</span>
-              <h3 className="text-2xl font-bold text-foreground mb-2">
-                Alhamdulillah!
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {language === 'id' ? 'Target tercapai' : 'Target reached'}
-              </p>
-              <Button onClick={() => setTargetReached(false)}>
-                {language === 'id' ? 'Lanjutkan' : 'Continue'}
-              </Button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
