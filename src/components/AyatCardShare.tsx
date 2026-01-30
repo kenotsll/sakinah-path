@@ -113,34 +113,28 @@ export const AyatCardShare = ({
   const combinedTranslation = selectedContent.map(a => a.translation).join(' ');
 
   // Generate HTML for Arabic text with circled numbers (for image export)
-  const generateArabicWithCircledNumbers = () => {
+  // Using Unicode combining enclosing circle (U+20DD) or simple parentheses with styling
+  const generateArabicWithCircledNumbers = useCallback(() => {
     return selectedContent
       .map((a) => {
         const text = a.text?.trim?.() ?? a.text;
         const num = a.numberInSurah;
-        // Create a circled number using inline CSS
-        const circledNum = `<span style="
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 1.4em;
-          height: 1.4em;
-          border: 2px solid rgba(255,255,255,0.5);
-          border-radius: 50%;
-          font-size: 0.5em;
-          margin: 0 0.2em;
-          vertical-align: middle;
-          color: rgba(255,255,255,0.7);
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        ">${num}</span>`;
-        return `${text} ${circledNum}`;
+        // Use a simple styled span for the ayah number
+        // The circle is created with border-radius
+        const circledNum = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.8em;height:1.8em;border:2px solid rgba(255,255,255,0.5);border-radius:50%;font-size:0.45em;margin:0 0.3em;vertical-align:middle;color:rgba(255,255,255,0.8);font-family:sans-serif;font-weight:600;padding:2px;">${num}</span>`;
+        return `${text}${circledNum}`;
       })
       .join(' ');
-  };
+  }, [selectedContent]);
 
-  // For preview display (simpler, text-based)
+  // For preview display - use simple Arabic number marker
   const combinedArabicPreview = selectedContent
-    .map((a) => `${a.text?.trim?.() ?? a.text} (${a.numberInSurah})`)
+    .map((a) => {
+      const text = a.text?.trim?.() ?? a.text;
+      const num = a.numberInSurah;
+      // Use Arabic-Indic numerals in a simple format
+      return `${text} ﴿${num}﴾`;
+    })
     .join(' ');
 
   // Ayah range text

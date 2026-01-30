@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { HomePage } from "@/components/pages/HomePage";
 import { QuranPage } from "@/components/pages/QuranPage";
@@ -12,8 +12,11 @@ import { FAQPage } from "@/components/pages/FAQPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import { NotificationPanel } from "@/components/pages/NotificationPanel";
 import { TasbihPage } from "@/components/pages/TasbihPage";
+import { PermissionDialog } from "@/components/PermissionDialog";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useNativePermissions } from "@/hooks/useNativePermissions";
+import { useNativeNotifications } from "@/hooks/useNativeNotifications";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -24,10 +27,44 @@ const Index = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showTasbih, setShowTasbih] = useState(false);
   const [showAyatShare, setShowAyatShare] = useState(false);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   // State for navigating to specific ayah from carousel bookmark
   const [pendingAyah, setPendingAyah] = useState<{ surahNumber: number; ayahNumber: number } | null>(null);
 
   const { permission, requestPermission } = useNotifications();
+  const { permissions, isNative } = useNativePermissions();
+  const { scheduleDailyReminders, scheduleStreakWarning } = useNativeNotifications();
+
+  // Show permission dialog on first load if permissions not granted (native only)
+  useEffect(() => {
+    const hasShownPermission = localStorage.getItem('permission_dialog_shown');
+    
+    // Only show on native platform and if not shown before
+    if (isNative && !hasShownPermission) {
+      // Delay to let app initialize
+      const timer = setTimeout(() => {
+        setShowPermissionDialog(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isNative]);
+
+  // Schedule native notifications when permissions are granted
+  useEffect(() => {
+    if (permissions.notifications === 'granted' && isNative) {
+      scheduleDailyReminders();
+      scheduleStreakWarning(22, 30); // 22:30 warning
+    }
+  }, [permissions.notifications, isNative, scheduleDailyReminders, scheduleStreakWarning]);
+
+  const handlePermissionsGranted = () => {
+    localStorage.setItem('permission_dialog_shown', 'true');
+  };
+
+  const handleClosePermissionDialog = () => {
+    setShowPermissionDialog(false);
+    localStorage.setItem('permission_dialog_shown', 'true');
+  };
 
   // Handle opening ayah from carousel bookmark
   const handleOpenAyah = (surahNumber: number, ayahNumber: number) => {
@@ -145,6 +182,13 @@ const Index = () => {
           onClose={() => setShowNotifications(false)}
           onRequestPermission={requestPermission}
           hasPermission={permission === "granted"}
+        />
+
+        {/* Permission Dialog for Native Apps */}
+        <PermissionDialog
+          isOpen={showPermissionDialog}
+          onClose={handleClosePermissionDialog}
+          onPermissionsGranted={handlePermissionsGranted}
         />
 
       </div>
