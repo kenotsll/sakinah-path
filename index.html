@@ -2,7 +2,7 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <title>Istiqamah - Langkah Menuju Kebaikan</title>
     <meta name="description" content="Aplikasi Islami untuk membantu perjalanan hijrah dan taubat. Panduan taubat, video motivasi, target amalan, dan konsultasi dengan ustadz." />
     <meta name="author" content="Istiqamah" />
@@ -10,6 +10,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Istiqamah" />
+    
+    <!-- Capacitor/Cordova compatibility -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https: 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; media-src 'self' https:;">
+    
+    <!-- Mobile app meta tags -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="mobile-web-app-capable" content="yes" />
 
     <meta property="og:title" content="Istiqamah - Langkah Menuju Kebaikan" />
     <meta property="og:description" content="Aplikasi Islami untuk membantu perjalanan hijrah dan taubat." />
