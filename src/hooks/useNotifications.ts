@@ -1,5 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { toast } from "sonner";
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 interface NotificationSchedule {
   id: string;
@@ -71,9 +73,90 @@ export const useNotifications = () => {
   // Track if document is visible
   const isVisibleRef = useRef(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isNative = Capacitor.isNativePlatform();
 
   // Request permission with better error handling
   const requestPermission = useCallback(async () => {
+    // Native platform - use Capacitor LocalNotifications
+    if (isNative) {
+      try {
+        const result = await LocalNotifications.requestPermissions();
+        const granted = result.display === 'granted';
+        setPermission(granted ? 'granted' : 'denied');
+
+        if (granted) {
+          // Create notification channels for Android
+          if (Capacitor.getPlatform() === 'android') {
+            try {
+              const channels = await LocalNotifications.listChannels();
+              
+              if (!channels.channels.find(c => c.id === 'prayer-times')) {
+                await LocalNotifications.createChannel({
+                  id: 'prayer-times',
+                  name: 'Waktu Sholat',
+                  description: 'Notifikasi pengingat waktu sholat',
+                  importance: 5,
+                  visibility: 1,
+                  vibration: true,
+                  sound: 'beep.wav',
+                  lights: true,
+                  lightColor: '#10B981',
+                });
+              }
+
+              if (!channels.channels.find(c => c.id === 'daily-reminder')) {
+                await LocalNotifications.createChannel({
+                  id: 'daily-reminder',
+                  name: 'Pengingat Harian',
+                  description: 'Notifikasi pengingat target harian',
+                  importance: 4,
+                  visibility: 1,
+                  vibration: true,
+                });
+              }
+            } catch (e) {
+              console.error('Error creating notification channels:', e);
+            }
+          }
+
+          toast.success("Notifikasi diaktifkan! 🔔", {
+            description: "Kamu akan menerima pengingat ibadah tepat waktu",
+          });
+
+          // Send test notification
+          setTimeout(async () => {
+            try {
+              await LocalNotifications.schedule({
+                notifications: [{
+                  id: Math.floor(Math.random() * 10000),
+                  title: "Notifikasi Aktif ✓",
+                  body: "Pengingat sholat dan ibadah sudah aktif!",
+                  schedule: { at: new Date(Date.now() + 1000) },
+                  channelId: 'daily-reminder',
+                  smallIcon: 'ic_stat_icon_config_sample',
+                  autoCancel: true,
+                }]
+              });
+            } catch (e) {
+              console.error('Test notification error:', e);
+            }
+          }, 1000);
+
+          return true;
+        } else {
+          toast.error("Izin notifikasi ditolak", {
+            description: "Buka Pengaturan Aplikasi > Notifikasi untuk mengaktifkan",
+          });
+        }
+        return false;
+      } catch (error) {
+        console.error("Error requesting native notification permission:", error);
+        toast.error("Gagal meminta izin notifikasi");
+        return false;
+      }
+    }
+
+    // Web fallback
     if (!("Notification" in window)) {
       toast.error("Browser tidak mendukung notifikasi", {
         description: "Gunakan browser modern seperti Chrome atau Firefox",
@@ -114,17 +197,37 @@ export const useNotifications = () => {
       toast.error("Gagal meminta izin notifikasi");
       return false;
     }
-  }, []);
+  }, [isNative]);
 
   // Send notification with improved reliability
-  const sendNotification = useCallback((title: string, body: string, options?: { tag?: string; requireInteraction?: boolean }) => {
+  const sendNotification = useCallback(async (title: string, body: string, options?: { tag?: string; requireInteraction?: boolean }) => {
     // Always show in-app toast as backup/confirmation
     toast(title, {
       description: body,
       duration: 8000,
     });
 
-    // Try to send browser notification
+    // Native platform - use Capacitor LocalNotifications
+    if (isNative && permission === 'granted') {
+      try {
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: Math.floor(Math.random() * 100000),
+            title,
+            body,
+            schedule: { at: new Date(Date.now() + 500) },
+            channelId: 'daily-reminder',
+            smallIcon: 'ic_stat_icon_config_sample',
+            autoCancel: true,
+          }]
+        });
+      } catch (error) {
+        console.error("Error sending native notification:", error);
+      }
+      return;
+    }
+
+    // Web fallback - try to send browser notification
     if (permission === "granted" && "Notification" in window) {
       try {
         const notification = new Notification(title, {
@@ -149,7 +252,7 @@ export const useNotifications = () => {
         console.error("Error showing notification:", error);
       }
     }
-  }, [permission]);
+  }, [permission, isNative]);
 
   // Update schedule
   const updateSchedule = useCallback((id: string, updates: Partial<NotificationSchedule>) => {
@@ -231,8 +334,15 @@ export const useNotifications = () => {
 
   // Check permission on mount and when window regains focus
   useEffect(() => {
-    const checkPermission = () => {
-      if ("Notification" in window) {
+    const checkPermission = async () => {
+      if (isNative) {
+        try {
+          const result = await LocalNotifications.checkPermissions();
+          setPermission(result.display === 'granted' ? 'granted' : 'default');
+        } catch (e) {
+          console.error('Error checking native notification permission:', e);
+        }
+      } else if ("Notification" in window) {
         setPermission(Notification.permission);
       }
     };
@@ -242,7 +352,7 @@ export const useNotifications = () => {
     // Re-check when window gains focus
     window.addEventListener("focus", checkPermission);
     return () => window.removeEventListener("focus", checkPermission);
-  }, []);
+  }, [isNative]);
 
   // Manual trigger for testing
   const testNotification = useCallback(() => {
@@ -260,6 +370,6 @@ export const useNotifications = () => {
     sendNotification,
     updateSchedule,
     testNotification,
-    isSupported: "Notification" in window,
+    isSupported: isNative || "Notification" in window,
   };
 };

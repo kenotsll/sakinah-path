@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { X, RotateCcw, Target, Volume2, VolumeX, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,23 +20,48 @@ const DZIKIR_PRESETS = [
 const TARGET_OPTIONS = [33, 99, 100, 1000];
 const TOTAL_BEADS = 33;
 
+// Persistent audio context singleton
+let audioContext: AudioContext | null = null;
+
+const getAudioContext = (): AudioContext | null => {
+  try {
+    if (!audioContext || audioContext.state === 'closed') {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    // Resume if suspended (happens after user gesture requirement)
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+    return audioContext;
+  } catch (e) {
+    console.error('AudioContext not supported:', e);
+    return null;
+  }
+};
+
 // Modern digital click sound using Web Audio API
 const playDigitalClick = () => {
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    
+    // Resume context if needed (must be done in user gesture)
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
     
     // Create a more modern, crisp digital click
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    const filter = audioContext.createBiquadFilter();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
     
     oscillator.connect(filter);
     filter.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    gainNode.connect(ctx.destination);
     
     // Modern digital click - higher frequency, sharper attack
-    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.03);
+    oscillator.frequency.setValueAtTime(1200, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.03);
     oscillator.type = 'sine';
     
     // Crisp filter
@@ -45,13 +70,14 @@ const playDigitalClick = () => {
     filter.Q.value = 1;
     
     // Sharp attack, quick decay
-    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
+    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
     
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.08);
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.08);
   } catch (e) {
     // Audio not supported
+    console.warn('Audio playback failed:', e);
   }
 };
 
@@ -114,6 +140,9 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
   const dzikir = DZIKIR_PRESETS[dzikirIndex];
   const progress = (count / target) * 100;
   
+  // Initialize audio context on first user interaction
+  const audioInitializedRef = useRef(false);
+  
   // Generate bead positions
   const beadPositions = useMemo(() => generateOctagonPositions(TOTAL_BEADS, 100), []);
   
@@ -121,7 +150,21 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
   const countedBeads = count % TOTAL_BEADS;
   const fullRounds = Math.floor(count / TOTAL_BEADS);
 
+  // Initialize audio on first interaction (required by browsers)
+  const initAudio = useCallback(() => {
+    if (!audioInitializedRef.current) {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      audioInitializedRef.current = true;
+    }
+  }, []);
+
   const handleTap = useCallback(() => {
+    // Initialize audio on first tap
+    initAudio();
+    
     if (count < target) {
       setCount(prev => prev + 1);
       // Rotate the entire octagon by one bead position
@@ -129,7 +172,7 @@ export const TasbihDigital = ({ isOpen, onClose }: TasbihDigitalProps) => {
       triggerHaptic('light');
       if (soundEnabled) playDigitalClick();
     }
-  }, [count, target, soundEnabled]);
+  }, [count, target, soundEnabled, initAudio]);
 
   // Check if target reached
   useEffect(() => {
