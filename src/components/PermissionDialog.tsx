@@ -24,6 +24,7 @@ export const PermissionDialog = ({
     requestLocationPermission,
     requestNotificationPermission,
     checkGpsStatus,
+    openLocationSettings,
   } = useNativePermissions();
 
   const [step, setStep] = useState<'intro' | 'requesting' | 'result'>('intro');
@@ -60,6 +61,13 @@ export const PermissionDialog = ({
     } else {
       await requestNotificationPermission();
     }
+  };
+
+  const handleFixLocation = async () => {
+    // Try prompting system dialog first; if user previously chose "Don't ask again",
+    // Android won't show the dialog and user must enable it from App Settings.
+    const granted = await requestLocationPermission();
+    if (!granted) openLocationSettings();
   };
 
   const allGranted = 
@@ -194,13 +202,22 @@ export const PermissionDialog = ({
           {permissions.location === 'granted' ? (
             <span className="text-green-500 text-sm">Diizinkan</span>
           ) : (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => handleRequestSingle('location')}
-            >
-              Coba Lagi
-            </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleFixLocation}
+                >
+                  Coba Lagi
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={openLocationSettings}
+                >
+                  Pengaturan
+                </Button>
+              </div>
           )}
         </div>
 
