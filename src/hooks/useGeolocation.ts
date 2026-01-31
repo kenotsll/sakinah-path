@@ -93,11 +93,11 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
     try {
       // First check permissions
       const permStatus = await Geolocation.checkPermissions();
-      
-      if (permStatus.location === 'denied') {
-        // Request permissions
+
+      // IMPORTANT (Android): first install can be 'prompt' and still needs requestPermissions()
+      if (permStatus.location !== 'granted') {
         const reqResult = await Geolocation.requestPermissions();
-        if (reqResult.location === 'denied') {
+        if (reqResult.location !== 'granted') {
           setState(prev => ({
             ...prev,
             loading: false,
@@ -226,10 +226,10 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
       try {
         // Check/request permissions first
         const permStatus = await Geolocation.checkPermissions();
-        
-        if (permStatus.location === 'denied') {
+
+        if (permStatus.location !== 'granted') {
           const reqResult = await Geolocation.requestPermissions();
-          if (reqResult.location === 'denied') {
+          if (reqResult.location !== 'granted') {
             setState(prev => ({
               ...prev,
               loading: false,

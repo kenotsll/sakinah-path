@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { NativeSettings, AndroidSettings, IOSSettings } from 'capacitor-native-settings';
 
 export interface PermissionStatus {
   location: 'granted' | 'denied' | 'prompt' | 'unknown';
@@ -256,11 +257,20 @@ export const useNativePermissions = (): UseNativePermissionsReturn => {
 
   // Open location settings (Android)
   const openLocationSettings = useCallback(() => {
-    if (isNative && Capacitor.getPlatform() === 'android') {
-      // On Android, we can't directly open settings from Capacitor
-      // Show a message to user instead
-      console.log('Please enable GPS in your device settings');
+    if (!isNative) return;
+
+    // Android: open app details screen so user can enable Location permission
+    if (Capacitor.getPlatform() === 'android') {
+      NativeSettings.openAndroid({ option: AndroidSettings.ApplicationDetails }).catch((e) => {
+        console.error('Failed to open Android app settings:', e);
+      });
+      return;
     }
+
+    // iOS: best-effort (opens app settings)
+    NativeSettings.openIOS({ option: IOSSettings.App }).catch((e) => {
+      console.error('Failed to open iOS app settings:', e);
+    });
   }, [isNative]);
 
   // Request all permissions at once
