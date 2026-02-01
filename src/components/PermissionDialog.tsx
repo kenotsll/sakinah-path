@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Bell, AlertTriangle, Settings, X, Loader2 } from 'lucide-react';
+import { MapPin, Bell, AlertTriangle, Settings, X, Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNativePermissions } from '@/hooks/useNativePermissions';
+import { useAndroidPermissions } from '@/hooks/useAndroidPermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PermissionDialogProps {
@@ -18,61 +18,55 @@ export const PermissionDialog = ({
 }: PermissionDialogProps) => {
   const { t } = useLanguage();
   const {
-    permissions,
-    loading,
-    requestAllPermissions,
+    location,
+    notifications,
+    gpsEnabled,
+    isNative,
+    isAndroid,
+    lastLocation,
     requestLocationPermission,
     requestNotificationPermission,
-    checkGpsStatus,
+    requestAllPermissions,
+    openAppSettings,
     openLocationSettings,
-  } = useNativePermissions();
+  } = useAndroidPermissions();
 
   const [step, setStep] = useState<'intro' | 'requesting' | 'result'>('intro');
-  const [gpsWarning, setGpsWarning] = useState(false);
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
+  const [isRequestingNotification, setIsRequestingNotification] = useState(false);
 
-  // Check GPS status when location is granted
+  // Handle permission request completion
   useEffect(() => {
-    if (permissions.location === 'granted') {
-      checkGpsStatus().then(enabled => {
-        setGpsWarning(!enabled);
-      });
+    if (step === 'result' && location === 'granted' && notifications === 'granted') {
+      onPermissionsGranted?.();
+      // Auto close after success
+      const timer = setTimeout(() => {
+        onClose();
+      }, 2500);
+      return () => clearTimeout(timer);
     }
-  }, [permissions.location, checkGpsStatus]);
+  }, [step, location, notifications, onPermissionsGranted, onClose]);
 
   const handleRequestPermissions = async () => {
     setStep('requesting');
-    
-    const success = await requestAllPermissions();
-    
+    await requestAllPermissions();
     setStep('result');
-
-    if (success) {
-      onPermissionsGranted?.();
-      // Auto close after success
-      setTimeout(() => {
-        onClose();
-      }, 2000);
-    }
   };
 
-  const handleRequestSingle = async (type: 'location' | 'notification') => {
-    if (type === 'location') {
-      await requestLocationPermission();
-    } else {
-      await requestNotificationPermission();
-    }
+  const handleRequestLocation = async () => {
+    setIsRequestingLocation(true);
+    await requestLocationPermission();
+    setIsRequestingLocation(false);
   };
 
-  const handleFixLocation = async () => {
-    // Try prompting system dialog first; if user previously chose "Don't ask again",
-    // Android won't show the dialog and user must enable it from App Settings.
-    const granted = await requestLocationPermission();
-    if (!granted) openLocationSettings();
+  const handleRequestNotification = async () => {
+    setIsRequestingNotification(true);
+    await requestNotificationPermission();
+    setIsRequestingNotification(false);
   };
 
-  const allGranted = 
-    permissions.location === 'granted' && 
-    permissions.notifications === 'granted';
+  const allGranted = location === 'granted' && notifications === 'granted';
+  const someGranted = location === 'granted' || notifications === 'granted';
 
   const renderIntro = () => (
     <motion.div
@@ -87,7 +81,7 @@ export const PermissionDialog = ({
         </div>
         <h2 className="text-xl font-semibold">Izin Diperlukan</h2>
         <p className="text-sm text-muted-foreground">
-          Untuk pengalaman terbaik, aplikasi membutuhkan beberapa izin berikut:
+          Agar aplikasi berfungsi optimal, kami membutuhkan izin berikut:
         </p>
       </div>
 
@@ -100,13 +94,11 @@ export const PermissionDialog = ({
           <div className="flex-1">
             <h3 className="font-medium">Lokasi</h3>
             <p className="text-sm text-muted-foreground">
-              Untuk menampilkan jadwal sholat dan mencari masjid terdekat berdasarkan posisi Anda
+              Untuk jadwal sholat akurat dan mencari masjid terdekat
             </p>
           </div>
-          {permissions.location === 'granted' && (
-            <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
-              <span className="text-white text-xs">✓</span>
-            </div>
+          {location === 'granted' && (
+            <CheckCircle2 className="h-6 w-6 text-green-500 shrink-0" />
           )}
         </div>
 
@@ -118,16 +110,21 @@ export const PermissionDialog = ({
           <div className="flex-1">
             <h3 className="font-medium">Notifikasi</h3>
             <p className="text-sm text-muted-foreground">
-              Untuk mengingatkan waktu sholat dan target harian Anda
+              Untuk pengingat sholat, dzikir, dan target harian
             </p>
           </div>
-          {permissions.notifications === 'granted' && (
-            <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
-              <span className="text-white text-xs">✓</span>
-            </div>
+          {notifications === 'granted' && (
+            <CheckCircle2 className="h-6 w-6 text-green-500 shrink-0" />
           )}
         </div>
       </div>
+
+      {/* Debug Info (only in development) */}
+      {isNative && (
+        <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+          <p>Platform: {isAndroid ? 'Android' : 'iOS'} | Status: L={location}, N={notifications}</p>
+        </div>
+      )}
 
       <Button 
         className="w-full" 
@@ -154,10 +151,15 @@ export const PermissionDialog = ({
       className="text-center py-8 space-y-4"
     >
       <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
-      <p className="text-muted-foreground">Meminta izin...</p>
-      <p className="text-xs text-muted-foreground">
-        Tekan "Izinkan" pada dialog yang muncul
-      </p>
+      <p className="text-lg font-medium">Meminta izin...</p>
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">
+          📱 Akan muncul dialog izin Android
+        </p>
+        <p className="text-sm text-muted-foreground font-medium text-primary">
+          Tekan "Izinkan" atau "Allow" pada dialog
+        </p>
+      </div>
     </motion.div>
   );
 
@@ -173,97 +175,135 @@ export const PermissionDialog = ({
           allGranted ? 'bg-green-500/10' : 'bg-yellow-500/10'
         }`}>
           {allGranted ? (
-            <span className="text-3xl">✓</span>
+            <CheckCircle2 className="h-8 w-8 text-green-500" />
           ) : (
             <AlertTriangle className="h-8 w-8 text-yellow-500" />
           )}
         </div>
         <h2 className="text-xl font-semibold">
-          {allGranted ? 'Semua Izin Diberikan!' : 'Beberapa Izin Ditolak'}
+          {allGranted ? 'Semua Izin Diberikan!' : 'Ada Izin Yang Belum Aktif'}
         </h2>
         <p className="text-sm text-muted-foreground">
           {allGranted 
             ? 'Aplikasi siap digunakan dengan semua fitur aktif' 
-            : 'Beberapa fitur mungkin tidak berfungsi dengan baik'}
+            : 'Beberapa fitur tidak akan berfungsi'}
         </p>
       </div>
 
       {/* Permission Status */}
       <div className="space-y-3">
+        {/* Location Status */}
         <div className={`flex items-center justify-between p-3 rounded-lg ${
-          permissions.location === 'granted' ? 'bg-green-500/10' : 'bg-red-500/10'
+          location === 'granted' ? 'bg-green-500/10' : 'bg-red-500/10'
         }`}>
           <div className="flex items-center gap-3">
             <MapPin className={`h-5 w-5 ${
-              permissions.location === 'granted' ? 'text-green-500' : 'text-red-500'
+              location === 'granted' ? 'text-green-500' : 'text-red-500'
             }`} />
-            <span>Lokasi</span>
+            <div>
+              <span className="font-medium">Lokasi</span>
+              {location === 'granted' && lastLocation && (
+                <p className="text-xs text-muted-foreground">
+                  ✓ Terdeteksi ({lastLocation.latitude.toFixed(4)}, {lastLocation.longitude.toFixed(4)})
+                </p>
+              )}
+            </div>
           </div>
-          {permissions.location === 'granted' ? (
-            <span className="text-green-500 text-sm">Diizinkan</span>
+          {location === 'granted' ? (
+            <span className="text-green-500 text-sm font-medium">Aktif</span>
           ) : (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleFixLocation}
-                >
-                  Coba Lagi
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={openLocationSettings}
-                >
-                  Pengaturan
-                </Button>
-              </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRequestLocation}
+                disabled={isRequestingLocation}
+              >
+                {isRequestingLocation ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Coba Lagi'
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={openAppSettings}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
 
+        {/* Notification Status */}
         <div className={`flex items-center justify-between p-3 rounded-lg ${
-          permissions.notifications === 'granted' ? 'bg-green-500/10' : 'bg-red-500/10'
+          notifications === 'granted' ? 'bg-green-500/10' : 'bg-red-500/10'
         }`}>
           <div className="flex items-center gap-3">
             <Bell className={`h-5 w-5 ${
-              permissions.notifications === 'granted' ? 'text-green-500' : 'text-red-500'
+              notifications === 'granted' ? 'text-green-500' : 'text-red-500'
             }`} />
-            <span>Notifikasi</span>
+            <span className="font-medium">Notifikasi</span>
           </div>
-          {permissions.notifications === 'granted' ? (
-            <span className="text-green-500 text-sm">Diizinkan</span>
+          {notifications === 'granted' ? (
+            <span className="text-green-500 text-sm font-medium">Aktif</span>
           ) : (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => handleRequestSingle('notification')}
-            >
-              Coba Lagi
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRequestNotification}
+                disabled={isRequestingNotification}
+              >
+                {isRequestingNotification ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Coba Lagi'
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={openAppSettings}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
       </div>
 
       {/* GPS Warning */}
-      {gpsWarning && (
+      {location === 'granted' && !gpsEnabled && (
         <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10">
           <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-yellow-600">GPS Tidak Aktif</p>
             <p className="text-xs text-muted-foreground">
-              Nyalakan GPS di pengaturan perangkat untuk mendapatkan lokasi yang akurat
+              Nyalakan GPS untuk lokasi yang akurat
             </p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={openLocationSettings}
+          >
+            Nyalakan
+          </Button>
         </div>
       )}
 
-      {/* Denied Warning */}
+      {/* Manual Instructions */}
       {!allGranted && (
-        <div className="p-4 rounded-lg bg-muted/50">
-          <p className="text-sm text-muted-foreground">
-            <strong>Catatan:</strong> Jika tombol "Coba Lagi" tidak membuka dialog izin, 
-            buka Pengaturan → Aplikasi → Sakinah Path → Izin untuk mengaktifkan secara manual.
-          </p>
+        <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+          <p className="text-sm font-medium">Cara mengaktifkan manual:</p>
+          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+            <li>Tekan ikon <ExternalLink className="h-3 w-3 inline" /> untuk buka Pengaturan</li>
+            <li>Pilih "Izin" atau "Permissions"</li>
+            <li>Aktifkan "Lokasi" dan "Notifikasi"</li>
+            <li>Kembali ke aplikasi</li>
+          </ol>
         </div>
       )}
 
@@ -272,7 +312,7 @@ export const PermissionDialog = ({
         variant={allGranted ? "default" : "secondary"}
         onClick={onClose}
       >
-        {allGranted ? 'Mulai' : 'Tutup'}
+        {allGranted ? 'Mulai Menggunakan' : 'Tutup'}
       </Button>
     </motion.div>
   );
@@ -291,7 +331,7 @@ export const PermissionDialog = ({
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="relative w-full max-w-md bg-background rounded-2xl shadow-xl overflow-hidden"
+          className="relative w-full max-w-md bg-background rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto"
         >
           {/* Close button */}
           <button
