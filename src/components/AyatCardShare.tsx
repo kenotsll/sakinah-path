@@ -179,13 +179,18 @@ export const AyatCardShare = ({
   };
 
   // Generate Base64 data URL from component
+  // Generate Base64 data URL from component
   const generateImageDataUrl = useCallback(async (): Promise<string | null> => {
-    console.log('[AyatCardShare] generateImageDataUrl: Starting...');
+    const startTime = Date.now();
+    console.log('[AyatCardShare] ========== generateImageDataUrl START ==========');
+    console.log('[AyatCardShare] [1/10] Initializing... timestamp:', startTime);
     
     // Create a temporary container for the full-size story
     // Use opacity: 0 instead of left: -9999px to keep element in document flow
     // This ensures html-to-image can capture the element properly on Android
+    console.log('[AyatCardShare] [2/10] Creating container element...');
     const container = document.createElement('div');
+    container.id = 'ayat-export-container';
     container.style.position = 'fixed';
     container.style.top = '0';
     container.style.left = '0';
@@ -195,26 +200,48 @@ export const AyatCardShare = ({
     container.style.pointerEvents = 'none';
     container.style.zIndex = '-1';
     container.style.overflow = 'hidden';
+    console.log('[AyatCardShare] [2/10] Container created with styles:', {
+      position: container.style.position,
+      width: container.style.width,
+      height: container.style.height,
+      opacity: container.style.opacity,
+    });
+    
+    console.log('[AyatCardShare] [3/10] Appending container to document.body...');
     document.body.appendChild(container);
+    console.log('[AyatCardShare] [3/10] Container appended. Container in DOM:', !!document.getElementById('ayat-export-container'));
 
     // Calculate font sizes for full resolution
+    console.log('[AyatCardShare] [4/10] Calculating font sizes...');
+    console.log('[AyatCardShare] [4/10] Arabic text length:', combinedArabicText.length);
+    console.log('[AyatCardShare] [4/10] Translation text length:', combinedTranslation.length);
+    
     const arabicSize = combinedArabicText.length > 300 ? '42px' : 
                        combinedArabicText.length > 200 ? '52px' : 
                        combinedArabicText.length > 100 ? '62px' : '72px';
     
     const translationSize = combinedTranslation.length > 250 ? '32px' : 
                             combinedTranslation.length > 150 ? '38px' : '44px';
+    
+    console.log('[AyatCardShare] [4/10] Calculated sizes - Arabic:', arabicSize, 'Translation:', translationSize);
 
     // Generate Arabic HTML with circled numbers (sanitized)
+    console.log('[AyatCardShare] [5/10] Generating Arabic HTML with circled numbers...');
     const arabicHtml = generateArabicWithCircledNumbers();
+    console.log('[AyatCardShare] [5/10] Arabic HTML generated, length:', arabicHtml.length);
 
     // Sanitize all user-facing content to prevent XSS
+    console.log('[AyatCardShare] [6/10] Sanitizing user content...');
     const safeSurahName = escapeHtml(surahName);
     const safeSurahMeaning = surahMeaning ? escapeHtml(surahMeaning) : '';
     const safeTranslation = escapeHtml(combinedTranslation);
     const safeAyahRangeText = escapeHtml(ayahRangeText);
+    console.log('[AyatCardShare] [6/10] Content sanitized:', { safeSurahName, safeAyahRangeText });
 
     // Build HTML string
+    console.log('[AyatCardShare] [7/10] Building HTML content string...');
+    console.log('[AyatCardShare] [7/10] Using theme background:', theme.background);
+    
     const htmlContent = `
       <div style="
         width: 1080px;
@@ -320,42 +347,115 @@ export const AyatCardShare = ({
         </div>
       </div>
     `;
+    console.log('[AyatCardShare] [7/10] HTML content built, length:', htmlContent.length);
 
     // Sanitize the final HTML with DOMPurify
-    container.innerHTML = DOMPurify.sanitize(htmlContent, {
+    console.log('[AyatCardShare] [8/10] Sanitizing HTML with DOMPurify...');
+    const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
       ADD_TAGS: ['style'],
       ADD_ATTR: ['style'],
       ALLOW_DATA_ATTR: false,
     });
+    container.innerHTML = sanitizedHtml;
+    console.log('[AyatCardShare] [8/10] HTML sanitized and set to container');
 
     try {
+      console.log('[AyatCardShare] [9/10] Finding story element...');
       const storyEl = container.firstElementChild as HTMLElement | null;
+      
       if (!storyEl) {
-        console.error('[AyatCardShare] Failed: story root element not found');
+        console.error('[AyatCardShare] FATAL: story root element not found!');
+        console.error('[AyatCardShare] Container innerHTML length:', container.innerHTML.length);
+        console.error('[AyatCardShare] Container children count:', container.children.length);
         document.body.removeChild(container);
+        alert('Error: Story element tidak ditemukan');
         return null;
       }
+      
+      console.log('[AyatCardShare] [9/10] Story element found:', {
+        tagName: storyEl.tagName,
+        offsetWidth: storyEl.offsetWidth,
+        offsetHeight: storyEl.offsetHeight,
+        clientWidth: storyEl.clientWidth,
+        clientHeight: storyEl.clientHeight,
+      });
 
       // Wait for fonts to render, especially Arabic fonts on Android
-      console.log('[AyatCardShare] Waiting 500ms for fonts to render...');
+      console.log('[AyatCardShare] [9/10] Waiting 500ms for fonts to render...');
       await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('[AyatCardShare] [9/10] Font wait complete');
 
-      console.log('[AyatCardShare] Converting to PNG with toPng (with skipFonts: false)...');
-      const dataUrl = await toPng(storyEl, {
+      // Set up timeout warning at 5 seconds
+      console.log('[AyatCardShare] [10/10] Starting toPng with 15s timeout...');
+      console.log('[AyatCardShare] [10/10] toPng options:', {
         quality: 1,
         pixelRatio: 1,
         width: 1080,
         height: 1920,
+        backgroundColor: theme.background,
         skipFonts: false,
       });
       
+      let renderStuck = false;
+      const stuckWarningTimeout = setTimeout(() => {
+        renderStuck = true;
+        console.warn('[AyatCardShare] WARNING: Render stuck for 5+ seconds!');
+        alert('Proses Render Gambar Macet');
+      }, 5000);
+      
+      // Create a promise race between toPng and 15s timeout
+      const timeoutPromise = new Promise<string>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('toPng timeout after 15 seconds'));
+        }, 15000);
+      });
+      
+      const toPngStartTime = Date.now();
+      console.log('[AyatCardShare] [10/10] Calling toPng at:', toPngStartTime);
+      
+      const dataUrl = await Promise.race([
+        toPng(storyEl, {
+          quality: 1,
+          pixelRatio: 1,
+          width: 1080,
+          height: 1920,
+          backgroundColor: theme.background,
+          skipFonts: false,
+        }),
+        timeoutPromise,
+      ]);
+      
+      // Clear the stuck warning timeout
+      clearTimeout(stuckWarningTimeout);
+      
+      const toPngEndTime = Date.now();
+      const toPngDuration = toPngEndTime - toPngStartTime;
+      console.log('[AyatCardShare] [10/10] toPng completed in:', toPngDuration, 'ms');
+      console.log('[AyatCardShare] [10/10] Was render stuck warning shown?', renderStuck);
+      
       document.body.removeChild(container);
+      console.log('[AyatCardShare] Container removed from DOM');
       console.log('[AyatCardShare] PNG dataUrl generated, length:', dataUrl.length);
+      console.log('[AyatCardShare] Total duration:', Date.now() - startTime, 'ms');
+      console.log('[AyatCardShare] ========== generateImageDataUrl SUCCESS ==========');
       
       return dataUrl;
     } catch (error) {
-      document.body.removeChild(container);
-      console.error('[AyatCardShare] toPng failed:', error);
+      console.error('[AyatCardShare] ========== generateImageDataUrl FAILED ==========');
+      console.error('[AyatCardShare] Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('[AyatCardShare] Error message:', error instanceof Error ? error.message : String(error));
+      console.error('[AyatCardShare] Error stack:', error instanceof Error ? error.stack : 'N/A');
+      console.error('[AyatCardShare] Time elapsed before error:', Date.now() - startTime, 'ms');
+      
+      // Cleanup
+      try {
+        document.body.removeChild(container);
+        console.log('[AyatCardShare] Container cleaned up after error');
+      } catch {
+        console.warn('[AyatCardShare] Container cleanup failed (may already be removed)');
+      }
+      
+      alert(`Render Error: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }, [theme.background, combinedArabicText, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText, generateArabicWithCircledNumbers]);
