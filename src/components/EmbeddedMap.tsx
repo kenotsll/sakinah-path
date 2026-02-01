@@ -10,6 +10,14 @@ interface EmbeddedMapProps {
   onOpenExternal?: () => void;
 }
 
+// Google Maps Embed API key - This is a client-side key designed for browser use.
+// IMPORTANT: This key MUST be restricted in Google Cloud Console:
+// 1. Go to Google Cloud Console → APIs & Services → Credentials
+// 2. Find this API key and set "HTTP referrers (web sites)" restriction
+// 3. Add authorized domains: *.lovableproject.com, *.lovable.app, your-production-domain.com
+// 4. Restrict to only "Maps Embed API"
+const GOOGLE_MAPS_EMBED_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
+
 export const EmbeddedMap = ({ onOpenExternal }: EmbeddedMapProps) => {
   const { language } = useLanguage();
   const { latitude, longitude, loading, error, startWatching } = useGeolocation();
@@ -28,11 +36,10 @@ export const EmbeddedMap = ({ onOpenExternal }: EmbeddedMapProps) => {
     if (!hasLocation) return null;
     
     // Using Google Maps Embed API with satellite view
-    const mapType = mapView === 'satellite' ? 'k' : 'm'; // k = satellite, m = roadmap
     const query = encodeURIComponent('masjid OR musholla OR mosque');
     
     // Use satellite view with markers
-    return `https://www.google.com/maps/embed/v1/search?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${query}&center=${latitude},${longitude}&zoom=15&maptype=${mapView}`;
+    return `https://www.google.com/maps/embed/v1/search?key=${GOOGLE_MAPS_EMBED_API_KEY}&q=${query}&center=${latitude},${longitude}&zoom=15&maptype=${mapView}`;
   };
 
   // External link to Google Maps
