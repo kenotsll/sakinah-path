@@ -437,37 +437,50 @@ export const AyatCardShare = ({
   }, [surahName, ayahRangeText]);
 
   const handleExport = useCallback(async () => {
-    console.log('[AyatCardShare] handleExport called', { 
-      isNative: Capacitor.isNativePlatform(),
-      platform: Capacitor.getPlatform()
-    });
+    console.log('[AyatCardShare] ===== handleExport START =====');
+    console.log('[AyatCardShare] Platform:', Capacitor.getPlatform());
+    console.log('[AyatCardShare] isNative:', Capacitor.isNativePlatform());
     
     setIsExporting(true);
+    
     try {
+      console.log('[AyatCardShare] Step 1: Generating story image...');
       const blob = await generateStoryImage();
+      
       if (!blob) {
+        const errMsg = 'generateStoryImage returned null';
+        console.error('[AyatCardShare] Error:', errMsg);
         toast.error('Gagal membuat gambar');
-        showDebugAlert('Error', 'generateStoryImage returned null');
+        showDebugAlert('Export Error', errMsg);
+        setIsExporting(false);
         return;
       }
       
-      console.log('[AyatCardShare] Image blob created, size:', blob.size);
+      console.log('[AyatCardShare] Step 2: Image blob created, size:', blob.size);
 
       if (Capacitor.isNativePlatform()) {
+        console.log('[AyatCardShare] Step 3: Using native download...');
         const success = await handleNativeDownload(blob);
+        console.log('[AyatCardShare] Native download result:', success);
         if (success) {
           setExportSuccess(true);
           setTimeout(() => setExportSuccess(false), 2000);
         }
       } else {
+        console.log('[AyatCardShare] Step 3: Using web download...');
         handleWebDownload(blob);
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 2000);
       }
+      
+      console.log('[AyatCardShare] ===== handleExport SUCCESS =====');
     } catch (error) {
-      console.error('[AyatCardShare] Export failed:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error('[AyatCardShare] ===== handleExport FAILED =====');
+      console.error('[AyatCardShare] Error:', errMsg);
+      console.error('[AyatCardShare] Stack:', error instanceof Error ? error.stack : 'N/A');
       toast.error('Gagal menyimpan gambar');
-      showDebugAlert('Export Error', String(error));
+      showDebugAlert('Export Error', errMsg);
     } finally {
       setIsExporting(false);
     }
@@ -560,43 +573,55 @@ export const AyatCardShare = ({
   }, [surahName, ayahRangeText]);
 
   const handleShare = useCallback(async () => {
-    console.log('[AyatCardShare] handleShare called', { 
-      isNative: Capacitor.isNativePlatform(),
-      platform: Capacitor.getPlatform()
-    });
+    console.log('[AyatCardShare] ===== handleShare START =====');
+    console.log('[AyatCardShare] Platform:', Capacitor.getPlatform());
+    console.log('[AyatCardShare] isNative:', Capacitor.isNativePlatform());
     
     setIsExporting(true);
+    
     try {
+      console.log('[AyatCardShare] Step 1: Generating story image...');
       const blob = await generateStoryImage();
+      
       if (!blob) {
+        const errMsg = 'generateStoryImage returned null';
+        console.error('[AyatCardShare] Error:', errMsg);
         toast.error('Gagal membuat gambar');
-        showDebugAlert('Error', 'generateStoryImage returned null');
+        showDebugAlert('Share Error', errMsg);
+        setIsExporting(false);
         return;
       }
       
-      console.log('[AyatCardShare] Image blob created for share, size:', blob.size);
+      console.log('[AyatCardShare] Step 2: Image blob created, size:', blob.size);
 
       let success = false;
 
       if (Capacitor.isNativePlatform()) {
+        console.log('[AyatCardShare] Step 3: Using native share...');
         success = await handleNativeShare(blob);
+        console.log('[AyatCardShare] Native share result:', success);
       } else {
+        console.log('[AyatCardShare] Step 3: Using web share...');
         success = await handleWebShare(blob);
+        console.log('[AyatCardShare] Web share result:', success);
       }
 
       if (success) {
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 2000);
+        console.log('[AyatCardShare] ===== handleShare SUCCESS =====');
       } else {
-        // Fallback to download
         console.log('[AyatCardShare] Share failed, falling back to download');
         handleWebDownload(blob);
         toast.info('Gambar diunduh karena share tidak tersedia');
       }
     } catch (error) {
-      console.error('[AyatCardShare] Share failed:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error('[AyatCardShare] ===== handleShare FAILED =====');
+      console.error('[AyatCardShare] Error:', errMsg);
+      console.error('[AyatCardShare] Stack:', error instanceof Error ? error.stack : 'N/A');
       toast.error('Gagal membagikan gambar');
-      showDebugAlert('Share Error', String(error));
+      showDebugAlert('Share Error', errMsg);
     } finally {
       setIsExporting(false);
     }
@@ -616,7 +641,7 @@ export const AyatCardShare = ({
     }
   };
 
-  // Button wrapper component with proper touch handling
+  // Button wrapper component with proper touch handling for Android WebView
   const ActionButton = useCallback(({ 
     onClick, 
     variant = 'default',
@@ -628,17 +653,33 @@ export const AyatCardShare = ({
     disabled?: boolean;
     children: React.ReactNode;
   }) => {
-    const handleInteraction = (e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => {
+    const handleClick = (e: React.MouseEvent) => {
       e.preventDefault();
-      e.stopPropagation();
+      console.log('[AyatCardShare] ActionButton onClick fired');
+      if (!disabled) {
+        runOncePerTap(onClick);
+      }
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+      e.preventDefault();
+      console.log('[AyatCardShare] ActionButton onTouchEnd fired');
+      if (!disabled) {
+        runOncePerTap(onClick);
+      }
+    };
+
+    const handlePointerUp = (e: React.PointerEvent) => {
+      e.preventDefault();
+      console.log('[AyatCardShare] ActionButton onPointerUp fired');
       if (!disabled) {
         runOncePerTap(onClick);
       }
     };
 
     const baseClass = variant === 'outline' 
-      ? "flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-      : "flex-1 gap-2 bg-white text-black hover:bg-white/90";
+      ? "flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white pointer-events-auto"
+      : "flex-1 gap-2 bg-white text-black hover:bg-white/90 pointer-events-auto";
 
     return (
       <Button
@@ -646,20 +687,17 @@ export const AyatCardShare = ({
         variant={variant}
         className={baseClass}
         disabled={disabled}
-        onClick={handleInteraction}
-        onTouchStart={(e) => e.stopPropagation()}
-        onTouchEnd={handleInteraction}
-        onPointerDown={(e) => e.stopPropagation()}
-        onPointerUp={handleInteraction}
+        onClick={handleClick}
+        onTouchEnd={handleTouchEnd}
+        onPointerUp={handlePointerUp}
         style={{
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent',
           WebkitTouchCallout: 'none',
           userSelect: 'none',
           cursor: 'pointer',
-          // Ensure button is above any overlays
           position: 'relative',
-          zIndex: 50,
+          zIndex: 9999,
         }}
       >
         {children}
@@ -674,7 +712,7 @@ export const AyatCardShare = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] overflow-y-auto bg-black"
+          className="fixed inset-0 z-[9999] overflow-y-auto bg-black pointer-events-auto"
           style={{ touchAction: 'pan-y' }}
         >
           {/* Header */}
