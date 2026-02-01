@@ -87,6 +87,7 @@ export const AyatCardShare = ({
 }: AyatCardShareProps) => {
   const { language } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
+  const lastTapRef = useRef<number>(0);
   const [selectedAyahs, setSelectedAyahs] = useState<number[]>([initialAyahIndex]);
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -350,6 +351,7 @@ export const AyatCardShare = ({
   const handleExport = useCallback(async () => {
     setIsExporting(true);
     try {
+      console.log('[AyatCardShare] export tapped', { isNative: Capacitor.isNativePlatform() });
       const blob = await generateStoryImage();
       if (blob) {
         const url = URL.createObjectURL(blob);
@@ -375,9 +377,19 @@ export const AyatCardShare = ({
     }
   }, [generateStoryImage, surahName, ayahRangeText]);
 
+  const runOncePerTap = useCallback((fn: () => void) => {
+    // Android WebView sometimes fires multiple pointer/click events for a single tap.
+    // This guard keeps it to one execution.
+    const now = Date.now();
+    if (now - lastTapRef.current < 650) return;
+    lastTapRef.current = now;
+    fn();
+  }, []);
+
   const handleShare = useCallback(async () => {
     setIsExporting(true);
     try {
+      console.log('[AyatCardShare] share tapped', { isNative: Capacitor.isNativePlatform() });
       const blob = await generateStoryImage();
       if (!blob) {
         handleExport();
@@ -678,9 +690,18 @@ export const AyatCardShare = ({
               <Button
                 variant="outline"
                 className="flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleExport();
+                  runOncePerTap(() => handleExport());
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  runOncePerTap(() => handleExport());
+                }}
+                onTouchEnd={(e) => {
+                  e.stopPropagation();
+                  runOncePerTap(() => handleExport());
                 }}
                 disabled={isExporting}
               >
@@ -698,9 +719,18 @@ export const AyatCardShare = ({
               </Button>
               <Button
                 className="flex-1 gap-2 bg-white text-black hover:bg-white/90"
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleShare();
+                  runOncePerTap(() => handleShare());
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  runOncePerTap(() => handleShare());
+                }}
+                onTouchEnd={(e) => {
+                  e.stopPropagation();
+                  runOncePerTap(() => handleShare());
                 }}
                 disabled={isExporting}
               >
