@@ -27,41 +27,47 @@ bun install
 npx cap add android
 ```
 
-### 3. Configure Android Manifest
+### 3. Configure Android Manifest (CRITICAL!)
 
-After adding Android, update `android/app/src/main/AndroidManifest.xml` to include required permissions:
+After adding Android, update `android/app/src/main/AndroidManifest.xml`:
+
+**Add these permissions BEFORE `<application>` tag:**
 
 ```xml
-<!-- Add inside <manifest> tag, before <application> -->
-
-<!-- Location Permissions -->
+<!-- Location Permissions (CRITICAL for Prayer Times) -->
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
 <!-- Notification Permissions (Android 13+) -->
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+<!-- Exact Alarm for precise notifications -->
 <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
-<!-- Boot Completed for rescheduling notifications -->
+<!-- Boot Completed - reschedule notifications after restart -->
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-<!-- Wake Lock for alarms -->
+<!-- Keep CPU awake for alarms -->
 <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-<!-- Vibration -->
+<!-- Vibration for notifications -->
 <uses-permission android:name="android.permission.VIBRATE" />
 
-<!-- Foreground Service for location updates -->
+<!-- Foreground Service for background location -->
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+<!-- Internet for API calls -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 ```
 
-Also add the Boot Receiver inside `<application>` tag:
+**Add Boot Completed Receiver inside `<application>` tag:**
 
 ```xml
-<!-- Boot Completed Receiver for notifications -->
+<!-- Boot Completed Receiver for rescheduling notifications -->
 <receiver android:name="com.capacitorjs.plugins.localnotifications.LocalNotificationRestoreReceiver"
     android:exported="false">
     <intent-filter>
@@ -117,32 +123,55 @@ npx cap sync android
 
 ## Notification Channels
 
-The app creates these notification channels automatically:
+The app automatically creates these notification channels:
 
-| Channel ID | Name | Description |
-|------------|------|-------------|
-| `prayer-times` | Waktu Sholat | Prayer time reminders (5 min before) |
-| `daily-reminder` | Pengingat Harian | Daily task reminders (17:00 & 21:00) |
-| `streak-warning` | Peringatan Streak | Streak warning before midnight |
+| Channel ID | Name | Description | Importance |
+|------------|------|-------------|------------|
+| `prayer-times` | Jadwal Sholat | Notifikasi waktu sholat (Adzan) | HIGH (5) - Sound + Heads-up |
+| `daily-reminder` | Pengingat Ibadah | Tugas harian, dzikir | DEFAULT (4) |
+| `quran-reminder` | Pengingat Al-Quran | Pengingat membaca Al-Quran | DEFAULT (4) |
+| `streak-warning` | Peringatan Streak | Peringatan sebelum streak hilang | HIGH (5) |
+| `reflection` | Refleksi Malam | Muhasabah dan taubat | LOW (3) |
+
+## Notification Schedule
+
+| Type | Time | Description |
+|------|------|-------------|
+| Prayer Times | 5 min before | Pengingat sebelum waktu sholat |
+| Task Reminder | 17:00 | Cek target harian (7 jam sebelum reset) |
+| Task Reminder | 21:00 | Pengingat terakhir (3 jam sebelum reset) |
+| Reflection | 21:30 | Waktu muhasabah malam |
+| Tahajjud | 03:30 | Panggilan tahajjud |
+| Quran | 06:00 | Pengingat membaca Al-Quran |
+| Dzikir Pagi | 05:30 | Pengingat dzikir pagi |
+| Dzikir Petang | 16:30 | Pengingat dzikir petang |
+| Streak Warning | 22:30 | Peringatan streak |
+| Streak Final | 23:30 | Peringatan terakhir sebelum reset |
 
 ## Permissions Flow
 
-1. **Location Permission**: Required for prayer times and mosque finder
-2. **Notification Permission**: Required for prayer/task reminders
-3. **GPS Check**: App prompts user to enable GPS if disabled
-
-The permission dialog appears on first launch and can be re-triggered from settings.
+1. **First Launch**: App shows PermissionDialog with explanation
+2. **Location Permission**: Required for prayer times and mosque finder
+3. **Notification Permission**: Required for all reminders
+4. **GPS Check**: App prompts user to enable GPS if disabled
+5. **Settings Fallback**: If user denies, app provides button to open Android Settings
 
 ## Troubleshooting
 
-### "Location unavailable" error
-- Ensure GPS is enabled on device
-- Grant location permission in app settings
+### Location dialog not appearing
+- Check if `ACCESS_FINE_LOCATION` permission is in AndroidManifest.xml
+- Make sure you're testing on a real device or emulator with Google Play Services
+- Check logcat for `[AndroidPermissions]` logs
+
+### "GPS Tidak Aktif" error
+- Enable Location/GPS in Android Settings
+- The app will prompt to open Location Settings
 
 ### Notifications not appearing
-- Check notification channel settings in Android
+- Check notification channel settings in Android Settings > Apps > Sakinah Path > Notifications
 - Ensure "Do Not Disturb" is off
-- Verify notification permission is granted
+- Check if notification permission was granted
+- Check logcat for `[Notifications]` logs
 
 ### Build errors
 ```bash
@@ -151,6 +180,17 @@ cd android
 ./gradlew clean
 cd ..
 npx cap sync android
+```
+
+## Verifying Notifications (Debugging)
+
+The app logs all notification scheduling. Check logcat for:
+- `[AndroidPermissions ...]` - Permission status and requests
+- `[Notifications ...]` - Notification scheduling
+
+Example logcat filter:
+```bash
+adb logcat | grep -E "AndroidPermissions|Notifications"
 ```
 
 ## Production Build
@@ -165,3 +205,10 @@ npx cap sync android
    - Build release APK
 
 The APK will be in `android/app/release/app-release.apk`
+
+## Important Notes
+
+- **Battery Optimization**: Tell users to disable battery optimization for this app to ensure notifications work reliably
+- **Xiaomi/MIUI**: Users may need to enable "Autostart" and disable "Battery Saver" for the app
+- **Samsung**: Users may need to add app to "Unmonitored apps" in Device Care
+

@@ -15,8 +15,10 @@ import { TasbihPage } from "@/components/pages/TasbihPage";
 import { PermissionDialog } from "@/components/PermissionDialog";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useNativePermissions } from "@/hooks/useNativePermissions";
-import { useNativeNotifications } from "@/hooks/useNativeNotifications";
+import { useAndroidPermissions } from "@/hooks/useAndroidPermissions";
+import { useScheduledNotifications } from "@/hooks/useScheduledNotifications";
+import { usePrayerTimes } from "@/hooks/usePrayerTimes";
+import { Capacitor } from "@capacitor/core";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -28,37 +30,103 @@ const Index = () => {
   const [showTasbih, setShowTasbih] = useState(false);
   const [showAyatShare, setShowAyatShare] = useState(false);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
-  // State for navigating to specific ayah from carousel bookmark
   const [pendingAyah, setPendingAyah] = useState<{ surahNumber: number; ayahNumber: number } | null>(null);
 
   const { permission, requestPermission } = useNotifications();
-  const { permissions, isNative } = useNativePermissions();
-  const { scheduleDailyReminders, scheduleStreakWarning } = useNativeNotifications();
+  const { location, notifications, isNative, lastLocation, requestAllPermissions } = useAndroidPermissions();
+  const { 
+    scheduleAllNotifications, 
+    schedulePrayerNotifications,
+    scheduleTaskReminders,
+    scheduleReflectionReminder,
+    scheduleQuranReminder,
+    scheduleDzikirReminders,
+    scheduleStreakWarning,
+  } = useScheduledNotifications();
+  const { times: prayerTimes } = usePrayerTimes();
 
-  // Show permission dialog on first load if permissions not granted (native only)
+  // Show permission dialog on first load (native only)
   useEffect(() => {
     const hasShownPermission = localStorage.getItem('permission_dialog_shown');
     
-    // Only show on native platform and if not shown before
-    if (isNative && !hasShownPermission) {
+    if (Capacitor.isNativePlatform() && !hasShownPermission) {
       // Delay to let app initialize
       const timer = setTimeout(() => {
         setShowPermissionDialog(true);
-      }, 1500);
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isNative]);
+  }, []);
 
-  // Schedule native notifications when permissions are granted
+  // Auto-request permissions on native if not shown dialog yet
   useEffect(() => {
-    if (permissions.notifications === 'granted' && isNative) {
-      scheduleDailyReminders();
-      scheduleStreakWarning(22, 30); // 22:30 warning
+    const hasShownPermission = localStorage.getItem('permission_dialog_shown');
+    
+    // If native and permissions not granted and dialog was shown before, try requesting again
+    if (Capacitor.isNativePlatform() && hasShownPermission) {
+      if (location !== 'granted' || notifications !== 'granted') {
+        // Small delay then try to request
+        const timer = setTimeout(() => {
+          requestAllPermissions();
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [permissions.notifications, isNative, scheduleDailyReminders, scheduleStreakWarning]);
+  }, [location, notifications, requestAllPermissions]);
+
+  // Schedule notifications when permissions are granted
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (notifications !== 'granted') return;
+
+    console.log('[Index] Scheduling notifications - permissions granted');
+
+    // Schedule all notification types
+    const setupNotifications = async () => {
+      // Schedule task reminders (17:00, 21:00)
+      await scheduleTaskReminders(true);
+      
+      // Schedule reflection/muhasabah (21:30, 03:30)
+      await scheduleReflectionReminder();
+      
+      // Schedule Quran reminder (06:00)
+      const lastRead = localStorage.getItem('quran_last_read');
+      await scheduleQuranReminder(lastRead ? JSON.parse(lastRead) : null);
+      
+      // Schedule dzikir reminders (05:30, 16:30)
+      await scheduleDzikirReminders();
+      
+      // Schedule streak warnings (22:30, 23:30)
+      const streakData = localStorage.getItem('user_streak');
+      const streakCount = streakData ? JSON.parse(streakData).count || 0 : 0;
+      await scheduleStreakWarning(22, 30, streakCount);
+    };
+
+    setupNotifications();
+  }, [notifications, scheduleTaskReminders, scheduleReflectionReminder, scheduleQuranReminder, scheduleDzikirReminders, scheduleStreakWarning]);
+
+  // Schedule prayer notifications when prayer times are available
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (notifications !== 'granted') return;
+    if (!prayerTimes) return;
+
+    console.log('[Index] Scheduling prayer notifications');
+
+    const prayers = [
+      { name: 'Subuh', englishName: 'Fajr', time: prayerTimes.Fajr },
+      { name: 'Dzuhur', englishName: 'Dhuhr', time: prayerTimes.Dhuhr },
+      { name: 'Ashar', englishName: 'Asr', time: prayerTimes.Asr },
+      { name: 'Maghrib', englishName: 'Maghrib', time: prayerTimes.Maghrib },
+      { name: 'Isya', englishName: 'Isha', time: prayerTimes.Isha },
+    ];
+
+    schedulePrayerNotifications(prayers);
+  }, [notifications, prayerTimes, schedulePrayerNotifications]);
 
   const handlePermissionsGranted = () => {
     localStorage.setItem('permission_dialog_shown', 'true');
+    console.log('[Index] Permissions granted callback');
   };
 
   const handleClosePermissionDialog = () => {
@@ -66,14 +134,12 @@ const Index = () => {
     localStorage.setItem('permission_dialog_shown', 'true');
   };
 
-  // Handle opening ayah from carousel bookmark
   const handleOpenAyah = (surahNumber: number, ayahNumber: number) => {
     setPendingAyah({ surahNumber, ayahNumber });
     setActiveTab("quran");
   };
 
   const renderPage = () => {
-    // Sub-pages that overlay the main navigation
     if (showTasbih) {
       return <TasbihPage onBack={() => setShowTasbih(false)} />;
     }
@@ -136,7 +202,6 @@ const Index = () => {
     }
   };
 
-  // Close sub-pages when tab changes
   const handleTabChange = (tab: string) => {
     setShowReflection(false);
     setShowFAQ(false);
@@ -146,18 +211,15 @@ const Index = () => {
     setActiveTab(tab);
   };
 
-  // Callback when calendar modal opens/closes
   const handleCalendarToggle = (isOpen: boolean) => {
     setShowCalendar(isOpen);
   };
 
-  // Auto-hide footer conditions: sub-pages, calendar modal open, tasbih page, or ayat share modal open
   const isSubPage = showReflection || showFAQ || showProfile || showTasbih;
   const shouldHideFooter = isSubPage || showCalendar || showAyatShare;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile Container */}
       <div className="mx-auto max-w-lg min-h-screen relative">
         <AnimatePresence mode="wait">
           <motion.div
@@ -171,12 +233,10 @@ const Index = () => {
           </motion.div>
         </AnimatePresence>
         
-        {/* Hide bottom nav when in sub-pages or Quran page */}
         {!shouldHideFooter && (
           <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
         )}
 
-        {/* Notification Panel */}
         <NotificationPanel
           isOpen={showNotifications}
           onClose={() => setShowNotifications(false)}
@@ -184,13 +244,11 @@ const Index = () => {
           hasPermission={permission === "granted"}
         />
 
-        {/* Permission Dialog for Native Apps */}
         <PermissionDialog
           isOpen={showPermissionDialog}
           onClose={handleClosePermissionDialog}
           onPermissionsGranted={handlePermissionsGranted}
         />
-
       </div>
     </div>
   );
