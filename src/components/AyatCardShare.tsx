@@ -6,6 +6,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { toPng } from "html-to-image";
 import { Ayah } from "@/hooks/useQuran";
 import DOMPurify from "dompurify";
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
+import { Filesystem, Directory } from "@capacitor/filesystem";
 interface AyatCardShareProps {
   isOpen: boolean;
   onClose: () => void;
@@ -381,10 +384,62 @@ export const AyatCardShare = ({
         return;
       }
 
+      // Check if running on native platform (Capacitor)
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // Convert blob to base64 for Capacitor Filesystem
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => {
+              const base64 = (reader.result as string).split(',')[1];
+              resolve(base64);
+            };
+            reader.onerror = reject;
+          });
+          reader.readAsDataURL(blob);
+          const base64Data = await base64Promise;
+          
+          // Save file to cache directory
+          const fileName = `istiqamah-${surahName}-${Date.now()}.png`;
+          const savedFile = await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache,
+          });
+          
+          // Share using Capacitor Share plugin
+          await Share.share({
+            title: `${surahName} - ${ayahRangeText}`,
+            text: `${surahName} ${ayahRangeText} - Istiqamah App`,
+            url: savedFile.uri,
+            dialogTitle: 'Bagikan Ayat',
+          });
+          
+          setExportSuccess(true);
+          setTimeout(() => setExportSuccess(false), 2000);
+          
+          // Clean up temp file after sharing
+          try {
+            await Filesystem.deleteFile({
+              path: fileName,
+              directory: Directory.Cache,
+            });
+          } catch {
+            // Ignore cleanup errors
+          }
+          
+          return;
+        } catch (nativeError) {
+          console.error('Native share failed, falling back:', nativeError);
+          // Fall through to web share or download
+        }
+      }
+
+      // Web share fallback
       const file = new File([blob], `istiqamah-${surahName}.png`, { type: 'image/png' });
       
-      // Try native share
-      if (navigator.share && navigator.canShare({ files: [file] })) {
+      // Try native share (web)
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: `${surahName} - ${ayahRangeText}`,
