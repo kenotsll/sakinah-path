@@ -183,11 +183,18 @@ export const AyatCardShare = ({
     console.log('[AyatCardShare] generateImageDataUrl: Starting...');
     
     // Create a temporary container for the full-size story
+    // Use opacity: 0 instead of left: -9999px to keep element in document flow
+    // This ensures html-to-image can capture the element properly on Android
     const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
     container.style.width = '1080px';
     container.style.height = '1920px';
+    container.style.opacity = '0';
+    container.style.pointerEvents = 'none';
+    container.style.zIndex = '-1';
+    container.style.overflow = 'hidden';
     document.body.appendChild(container);
 
     // Calculate font sizes for full resolution
@@ -329,12 +336,17 @@ export const AyatCardShare = ({
         return null;
       }
 
-      console.log('[AyatCardShare] Converting to PNG with toPng...');
+      // Wait for fonts to render, especially Arabic fonts on Android
+      console.log('[AyatCardShare] Waiting 500ms for fonts to render...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log('[AyatCardShare] Converting to PNG with toPng (with skipFonts: false)...');
       const dataUrl = await toPng(storyEl, {
         quality: 1,
         pixelRatio: 1,
         width: 1080,
         height: 1920,
+        skipFonts: false,
       });
       
       document.body.removeChild(container);
