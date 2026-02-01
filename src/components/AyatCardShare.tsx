@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toPng } from "html-to-image";
 import { Ayah } from "@/hooks/useQuran";
-
+import DOMPurify from "dompurify";
 interface AyatCardShareProps {
   isOpen: boolean;
   onClose: () => void;
@@ -43,6 +43,13 @@ const THEMES: Record<ThemeType, Theme> = {
     name: 'Coral',
     background: '#E85D75',
   },
+};
+
+// Escape HTML special characters to prevent XSS
+const escapeHtml = (text: string): string => {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 };
 
 // Check if text is "long"
@@ -186,10 +193,17 @@ export const AyatCardShare = ({
     const translationSize = combinedTranslation.length > 250 ? '32px' : 
                             combinedTranslation.length > 150 ? '38px' : '44px';
 
-    // Generate Arabic HTML with circled numbers
+    // Generate Arabic HTML with circled numbers (sanitized)
     const arabicHtml = generateArabicWithCircledNumbers();
 
-    container.innerHTML = `
+    // Sanitize all user-facing content to prevent XSS
+    const safeSurahName = escapeHtml(surahName);
+    const safeSurahMeaning = surahMeaning ? escapeHtml(surahMeaning) : '';
+    const safeTranslation = escapeHtml(combinedTranslation);
+    const safeAyahRangeText = escapeHtml(ayahRangeText);
+
+    // Build HTML string
+    const htmlContent = `
       <div style="
         width: 1080px;
         height: 1920px;
@@ -213,12 +227,12 @@ export const AyatCardShare = ({
             color: rgba(255,255,255,0.6);
             margin: 0;
             letter-spacing: 0.5px;
-          ">${surahName}</p>
-          ${surahMeaning ? `<p style="
+          ">${safeSurahName}</p>
+          ${safeSurahMeaning ? `<p style="
             font-size: 22px;
             color: rgba(255,255,255,0.5);
             margin: 8px 0 0 0;
-          ">${surahMeaning}</p>` : ''}
+          ">${safeSurahMeaning}</p>` : ''}
           <p style="
             font-size: 22px;
             color: rgba(255,255,255,0.4);
@@ -253,7 +267,7 @@ export const AyatCardShare = ({
             color: rgba(255,255,255,0.95);
             text-align: left;
             margin: 0;
-          ">"${combinedTranslation}"</p>
+          ">"${safeTranslation}"</p>
 
           <!-- Ayah Number -->
           <p style="
@@ -261,7 +275,7 @@ export const AyatCardShare = ({
             color: rgba(255,255,255,0.5);
             margin: 32px 0 0 0;
             text-align: left;
-          ">${ayahRangeText}</p>
+          ">${safeAyahRangeText}</p>
         </div>
 
         <!-- Bottom Left Branding -->
@@ -294,6 +308,13 @@ export const AyatCardShare = ({
         </div>
       </div>
     `;
+
+    // Sanitize the final HTML with DOMPurify
+    container.innerHTML = DOMPurify.sanitize(htmlContent, {
+      ADD_TAGS: ['style'],
+      ADD_ATTR: ['style'],
+      ALLOW_DATA_ATTR: false,
+    });
 
     try {
       // IMPORTANT: container.firstChild can be a Text node (whitespace), which breaks html-to-image
