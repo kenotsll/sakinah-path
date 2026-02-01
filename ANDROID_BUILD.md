@@ -64,6 +64,14 @@ After adding Android, update `android/app/src/main/AndroidManifest.xml`:
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 ```
 
+**Add these attributes to the `<application>` tag for storage permissions:**
+
+```xml
+<application
+    android:requestLegacyExternalStorage="true"
+    ... other existing attributes ...>
+```
+
 **Add Boot Completed Receiver inside `<application>` tag:**
 
 ```xml

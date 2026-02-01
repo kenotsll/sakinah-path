@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Share2, Download, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Share2, Download, Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toPng } from "html-to-image";
@@ -9,6 +9,9 @@ import DOMPurify from "dompurify";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Media } from "@capacitor-community/media";
+import { toast } from "sonner";
+
 interface AyatCardShareProps {
   isOpen: boolean;
   onClose: () => void;
@@ -74,6 +77,29 @@ const getTranslationFontSize = (textLength: number): string => {
   return '1.125rem';
 };
 
+// Helper to show debug alert on native
+const showDebugAlert = (title: string, message: string) => {
+  console.log(`[AyatCardShare] ${title}:`, message);
+  if (Capacitor.isNativePlatform()) {
+    // Use native alert for debugging on real device
+    alert(`${title}\n\n${message}`);
+  }
+};
+
+// Convert blob to base64
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error('Failed to read blob'));
+    reader.readAsDataURL(blob);
+  });
+};
+
 export const AyatCardShare = ({ 
   isOpen, 
   onClose, 
@@ -118,20 +144,15 @@ export const AyatCardShare = ({
   }, [selectedAyahs, ayahs]);
 
   // Build Arabic text with circled ayah numbers as end-of-ayah markers
-  // For the export image, we'll inject HTML with CSS-styled circles
-  // For the preview, we use a simpler approach
   const combinedArabicText = selectedContent.map(a => a.text?.trim?.() ?? a.text).join(' ');
   const combinedTranslation = selectedContent.map(a => a.translation).join(' ');
 
   // Generate HTML for Arabic text with circled numbers (for image export)
-  // Using Unicode combining enclosing circle (U+20DD) or simple parentheses with styling
   const generateArabicWithCircledNumbers = useCallback(() => {
     return selectedContent
       .map((a) => {
         const text = a.text?.trim?.() ?? a.text;
         const num = a.numberInSurah;
-        // Use a simple styled span for the ayah number
-        // The circle is created with border-radius
         const circledNum = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.8em;height:1.8em;border:2px solid rgba(255,255,255,0.5);border-radius:50%;font-size:0.45em;margin:0 0.3em;vertical-align:middle;color:rgba(255,255,255,0.8);font-family:sans-serif;font-weight:600;padding:2px;">${num}</span>`;
         return `${text}${circledNum}`;
       })
@@ -143,7 +164,6 @@ export const AyatCardShare = ({
     .map((a) => {
       const text = a.text?.trim?.() ?? a.text;
       const num = a.numberInSurah;
-      // Use Arabic-Indic numerals in a simple format
       return `${text} ﴿${num}﴾`;
     })
     .join(' ');
@@ -181,6 +201,8 @@ export const AyatCardShare = ({
 
   // Generate full-screen story image
   const generateStoryImage = useCallback(async (): Promise<Blob | null> => {
+    console.log('[AyatCardShare] generateStoryImage started');
+    
     // Create a temporary container for the full-size story
     const container = document.createElement('div');
     container.style.position = 'absolute';
@@ -321,15 +343,14 @@ export const AyatCardShare = ({
     });
 
     try {
-      // IMPORTANT: container.firstChild can be a Text node (whitespace), which breaks html-to-image
-      // and can lead to errors like reading 'fontFamily' of undefined.
       const storyEl = container.firstElementChild as HTMLElement | null;
       if (!storyEl) {
-        console.error('Failed to generate image: story root element not found');
+        console.error('[AyatCardShare] Failed to generate image: story root element not found');
         document.body.removeChild(container);
         return null;
       }
 
+      console.log('[AyatCardShare] Converting to PNG...');
       const dataUrl = await toPng(storyEl, {
         quality: 1,
         pixelRatio: 1,
@@ -338,140 +359,248 @@ export const AyatCardShare = ({
       });
       
       document.body.removeChild(container);
+      console.log('[AyatCardShare] PNG generated successfully');
       
       const response = await fetch(dataUrl);
       return await response.blob();
     } catch (error) {
       document.body.removeChild(container);
-      console.error('Failed to generate image:', error);
+      console.error('[AyatCardShare] Failed to generate image:', error);
       return null;
     }
   }, [theme.background, combinedArabicText, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText, generateArabicWithCircledNumbers]);
 
+  // Native download - save to Gallery
+  const handleNativeDownload = useCallback(async (blob: Blob): Promise<boolean> => {
+    try {
+      console.log('[AyatCardShare] Starting native download...');
+      const base64Data = await blobToBase64(blob);
+      const fileName = `istiqamah-${surahName.replace(/\s/g, '-')}-${Date.now()}.png`;
+      
+      // First save to cache
+      console.log('[AyatCardShare] Saving to cache...');
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+      console.log('[AyatCardShare] Saved to cache:', savedFile.uri);
+
+      // Try to save to gallery using Media plugin
+      try {
+        console.log('[AyatCardShare] Saving to gallery...');
+        await Media.savePhoto({
+          path: savedFile.uri,
+          albumIdentifier: 'Istiqamah',
+        });
+        console.log('[AyatCardShare] Saved to gallery successfully!');
+        toast.success('Tersimpan ke Galeri!');
+        return true;
+      } catch (mediaError) {
+        console.log('[AyatCardShare] Media.savePhoto failed, trying alternative...', mediaError);
+        
+        // Fallback: save directly to Documents which is more accessible
+        try {
+          await Filesystem.writeFile({
+            path: `Download/${fileName}`,
+            data: base64Data,
+            directory: Directory.ExternalStorage,
+            recursive: true,
+          });
+          console.log('[AyatCardShare] Saved to Downloads folder');
+          toast.success('Tersimpan ke folder Download!');
+          return true;
+        } catch (extError) {
+          console.log('[AyatCardShare] External storage failed:', extError);
+          // Keep the cache file and notify user
+          toast.success('Gambar tersimpan! Gunakan tombol Bagikan untuk menyimpan ke Galeri.');
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('[AyatCardShare] Native download failed:', error);
+      showDebugAlert('Download Error', String(error));
+      return false;
+    }
+  }, [surahName]);
+
+  // Web download fallback
+  const handleWebDownload = useCallback((blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `istiqamah-${surahName}-${ayahRangeText.replace(/\s/g, '')}.png`;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }, [surahName, ayahRangeText]);
+
   const handleExport = useCallback(async () => {
+    console.log('[AyatCardShare] handleExport called', { 
+      isNative: Capacitor.isNativePlatform(),
+      platform: Capacitor.getPlatform()
+    });
+    
     setIsExporting(true);
     try {
-      console.log('[AyatCardShare] export tapped', { isNative: Capacitor.isNativePlatform() });
       const blob = await generateStoryImage();
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `istiqamah-${surahName}-${ayahRangeText.replace(/\s/g, '')}.png`;
-        link.href = url;
-        // iOS/Safari can ignore programmatic clicks unless the element is in the DOM.
-        // Appending + removing makes the gesture more reliable across mobile browsers.
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+      if (!blob) {
+        toast.error('Gagal membuat gambar');
+        showDebugAlert('Error', 'generateStoryImage returned null');
+        return;
+      }
+      
+      console.log('[AyatCardShare] Image blob created, size:', blob.size);
 
-        // Revoke a bit later to avoid cancelling the download on some browsers.
-        setTimeout(() => URL.revokeObjectURL(url), 1500);
-        
+      if (Capacitor.isNativePlatform()) {
+        const success = await handleNativeDownload(blob);
+        if (success) {
+          setExportSuccess(true);
+          setTimeout(() => setExportSuccess(false), 2000);
+        }
+      } else {
+        handleWebDownload(blob);
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 2000);
       }
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('[AyatCardShare] Export failed:', error);
+      toast.error('Gagal menyimpan gambar');
+      showDebugAlert('Export Error', String(error));
     } finally {
       setIsExporting(false);
     }
-  }, [generateStoryImage, surahName, ayahRangeText]);
+  }, [generateStoryImage, handleNativeDownload, handleWebDownload]);
 
+  // Debounce guard for touch events
   const runOncePerTap = useCallback((fn: () => void) => {
-    // Android WebView sometimes fires multiple pointer/click events for a single tap.
-    // This guard keeps it to one execution.
     const now = Date.now();
-    if (now - lastTapRef.current < 650) return;
+    if (now - lastTapRef.current < 800) {
+      console.log('[AyatCardShare] Debounced duplicate tap');
+      return;
+    }
     lastTapRef.current = now;
     fn();
   }, []);
 
-  const handleShare = useCallback(async () => {
-    setIsExporting(true);
+  // Native share implementation
+  const handleNativeShare = useCallback(async (blob: Blob): Promise<boolean> => {
     try {
-      console.log('[AyatCardShare] share tapped', { isNative: Capacitor.isNativePlatform() });
-      const blob = await generateStoryImage();
-      if (!blob) {
-        handleExport();
-        return;
-      }
-
-      // Check if running on native platform (Capacitor)
-      if (Capacitor.isNativePlatform()) {
+      console.log('[AyatCardShare] Starting native share...');
+      const base64Data = await blobToBase64(blob);
+      const fileName = `istiqamah-${surahName.replace(/\s/g, '-')}-${Date.now()}.png`;
+      
+      // Save to cache first
+      console.log('[AyatCardShare] Saving to cache for share...');
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+      console.log('[AyatCardShare] File saved for share:', savedFile.uri);
+      
+      // Share using Capacitor Share plugin
+      console.log('[AyatCardShare] Opening share dialog...');
+      await Share.share({
+        title: `${surahName} - ${ayahRangeText}`,
+        text: `${surahName} ${ayahRangeText} - Istiqamah App`,
+        url: savedFile.uri,
+        dialogTitle: 'Bagikan Ayat',
+      });
+      console.log('[AyatCardShare] Share completed successfully!');
+      
+      // Clean up temp file after a delay
+      setTimeout(async () => {
         try {
-          // Convert blob to base64 for Capacitor Filesystem
-          const reader = new FileReader();
-          const base64Promise = new Promise<string>((resolve, reject) => {
-            reader.onloadend = () => {
-              const base64 = (reader.result as string).split(',')[1];
-              resolve(base64);
-            };
-            reader.onerror = reject;
-          });
-          reader.readAsDataURL(blob);
-          const base64Data = await base64Promise;
-          
-          // Save file to cache directory
-          const fileName = `istiqamah-${surahName}-${Date.now()}.png`;
-          const savedFile = await Filesystem.writeFile({
+          await Filesystem.deleteFile({
             path: fileName,
-            data: base64Data,
             directory: Directory.Cache,
           });
-          
-          // Share using Capacitor Share plugin
-          await Share.share({
-            title: `${surahName} - ${ayahRangeText}`,
-            text: `${surahName} ${ayahRangeText} - Istiqamah App`,
-            url: savedFile.uri,
-            dialogTitle: 'Bagikan Ayat',
-          });
-          
-          setExportSuccess(true);
-          setTimeout(() => setExportSuccess(false), 2000);
-          
-          // Clean up temp file after sharing
-          try {
-            await Filesystem.deleteFile({
-              path: fileName,
-              directory: Directory.Cache,
-            });
-          } catch {
-            // Ignore cleanup errors
-          }
-          
-          return;
-        } catch (nativeError) {
-          console.error('Native share failed, falling back:', nativeError);
-          // Fall through to web share or download
+          console.log('[AyatCardShare] Temp file cleaned up');
+        } catch {
+          // Ignore cleanup errors
         }
+      }, 5000);
+      
+      return true;
+    } catch (error) {
+      // Check if user cancelled
+      if ((error as Error).message?.includes('cancel') || 
+          (error as Error).message?.includes('dismissed')) {
+        console.log('[AyatCardShare] Share cancelled by user');
+        return true; // Not an error, user just cancelled
       }
+      console.error('[AyatCardShare] Native share failed:', error);
+      showDebugAlert('Share Error', String(error));
+      return false;
+    }
+  }, [surahName, ayahRangeText]);
 
-      // Web share fallback
+  // Web share fallback
+  const handleWebShare = useCallback(async (blob: Blob): Promise<boolean> => {
+    try {
       const file = new File([blob], `istiqamah-${surahName}.png`, { type: 'image/png' });
       
-      // Try native share (web)
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: `${surahName} - ${ayahRangeText}`,
           text: `${surahName} ${ayahRangeText} - Istiqamah App`,
         });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        console.error('[AyatCardShare] Web share failed:', error);
+      }
+      return false;
+    }
+  }, [surahName, ayahRangeText]);
+
+  const handleShare = useCallback(async () => {
+    console.log('[AyatCardShare] handleShare called', { 
+      isNative: Capacitor.isNativePlatform(),
+      platform: Capacitor.getPlatform()
+    });
+    
+    setIsExporting(true);
+    try {
+      const blob = await generateStoryImage();
+      if (!blob) {
+        toast.error('Gagal membuat gambar');
+        showDebugAlert('Error', 'generateStoryImage returned null');
+        return;
+      }
+      
+      console.log('[AyatCardShare] Image blob created for share, size:', blob.size);
+
+      let success = false;
+
+      if (Capacitor.isNativePlatform()) {
+        success = await handleNativeShare(blob);
+      } else {
+        success = await handleWebShare(blob);
+      }
+
+      if (success) {
         setExportSuccess(true);
         setTimeout(() => setExportSuccess(false), 2000);
       } else {
         // Fallback to download
-        handleExport();
+        console.log('[AyatCardShare] Share failed, falling back to download');
+        handleWebDownload(blob);
+        toast.info('Gambar diunduh karena share tidak tersedia');
       }
     } catch (error) {
-      if ((error as Error).name !== 'AbortError') {
-        console.error('Share failed:', error);
-        handleExport();
-      }
+      console.error('[AyatCardShare] Share failed:', error);
+      toast.error('Gagal membagikan gambar');
+      showDebugAlert('Share Error', String(error));
     } finally {
       setIsExporting(false);
     }
-  }, [generateStoryImage, surahName, ayahRangeText, handleExport]);
+  }, [generateStoryImage, handleNativeShare, handleWebShare, handleWebDownload]);
 
   const cycleTheme = () => {
     const themes: ThemeType[] = ['green', 'maroon', 'navy', 'coral'];
@@ -487,6 +616,57 @@ export const AyatCardShare = ({
     }
   };
 
+  // Button wrapper component with proper touch handling
+  const ActionButton = useCallback(({ 
+    onClick, 
+    variant = 'default',
+    disabled,
+    children 
+  }: { 
+    onClick: () => void; 
+    variant?: 'outline' | 'default';
+    disabled?: boolean;
+    children: React.ReactNode;
+  }) => {
+    const handleInteraction = (e: React.MouseEvent | React.TouchEvent | React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!disabled) {
+        runOncePerTap(onClick);
+      }
+    };
+
+    const baseClass = variant === 'outline' 
+      ? "flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+      : "flex-1 gap-2 bg-white text-black hover:bg-white/90";
+
+    return (
+      <Button
+        type="button"
+        variant={variant}
+        className={baseClass}
+        disabled={disabled}
+        onClick={handleInteraction}
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchEnd={handleInteraction}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={handleInteraction}
+        style={{
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          WebkitTouchCallout: 'none',
+          userSelect: 'none',
+          cursor: 'pointer',
+          // Ensure button is above any overlays
+          position: 'relative',
+          zIndex: 50,
+        }}
+      >
+        {children}
+      </Button>
+    );
+  }, [runOncePerTap]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -495,6 +675,7 @@ export const AyatCardShare = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[100] overflow-y-auto bg-black"
+          style={{ touchAction: 'pan-y' }}
         >
           {/* Header */}
           <div className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between bg-black/80 backdrop-blur-sm">
@@ -673,6 +854,7 @@ export const AyatCardShare = ({
                         ? 'bg-white text-black' 
                         : 'bg-white/10 text-white/70 hover:text-white hover:bg-white/20'
                     }`}
+                    style={{ touchAction: 'manipulation' }}
                   >
                     Ayat {ayah.numberInSurah}
                     {isLong && (
@@ -685,27 +867,26 @@ export const AyatCardShare = ({
               })}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-2" onClick={e => e.stopPropagation()}>
-              <Button
-                variant="outline"
-                className="flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  runOncePerTap(() => handleExport());
-                }}
-                onPointerUp={(e) => {
-                  e.stopPropagation();
-                  runOncePerTap(() => handleExport());
-                }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  runOncePerTap(() => handleExport());
-                }}
+            {/* Action Buttons - with improved touch handling */}
+            <div 
+              className="flex gap-3 pt-2" 
+              style={{ 
+                position: 'relative', 
+                zIndex: 60,
+                touchAction: 'manipulation',
+              }}
+            >
+              <ActionButton 
+                variant="outline" 
+                onClick={handleExport} 
                 disabled={isExporting}
               >
-                {exportSuccess ? (
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {language === 'id' ? 'Memproses...' : 'Processing...'}
+                  </>
+                ) : exportSuccess ? (
                   <>
                     <Check className="h-4 w-4" />
                     {language === 'id' ? 'Tersimpan!' : 'Saved!'}
@@ -716,27 +897,23 @@ export const AyatCardShare = ({
                     {language === 'id' ? 'Unduh' : 'Download'}
                   </>
                 )}
-              </Button>
-              <Button
-                className="flex-1 gap-2 bg-white text-black hover:bg-white/90"
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  runOncePerTap(() => handleShare());
-                }}
-                onPointerUp={(e) => {
-                  e.stopPropagation();
-                  runOncePerTap(() => handleShare());
-                }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  runOncePerTap(() => handleShare());
-                }}
+              </ActionButton>
+              <ActionButton 
+                onClick={handleShare} 
                 disabled={isExporting}
               >
-                <Share2 className="h-4 w-4" />
-                {language === 'id' ? 'Bagikan' : 'Share'}
-              </Button>
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {language === 'id' ? 'Memproses...' : 'Processing...'}
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-4 w-4" />
+                    {language === 'id' ? 'Bagikan' : 'Share'}
+                  </>
+                )}
+              </ActionButton>
             </div>
 
             <p className="text-xs text-center text-white/40">
