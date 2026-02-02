@@ -77,8 +77,6 @@ const getTranslationFontSize = (textLength: number): string => {
   return '1.125rem';
 };
 
-// Bump this string whenever we want to verify the newest APK/preview is actually running.
-const UI_DEBUG_STAMP = "dbg-2026-02-02-01";
 
 export const AyatCardShare = ({ 
   isOpen, 
@@ -729,10 +727,6 @@ export const AyatCardShare = ({
 
   // Main handlers that route to native or web
   const handleShare = useCallback(() => {
-    console.log('[AyatCardShare] handleShare tapped. isNative=', isNative, 'platform=', Capacitor.getPlatform());
-    // In APK, if user says "no response", this toast helps confirm the tap handler is reached.
-    // (If this never appears, the issue is touch/click event not firing / element overlaying.)
-    if (isNative) toast.message('Tap: Bagikan');
     if (isNative) {
       handleNativeShare();
     } else {
@@ -741,8 +735,6 @@ export const AyatCardShare = ({
   }, [isNative, handleNativeShare, handleWebShare]);
 
   const handleDownload = useCallback(() => {
-    console.log('[AyatCardShare] handleDownload tapped. isNative=', isNative, 'platform=', Capacitor.getPlatform());
-    if (isNative) toast.message('Tap: Unduh');
     if (isNative) {
       handleNativeDownload();
     } else {
@@ -787,13 +779,9 @@ export const AyatCardShare = ({
             >
               <X className="h-5 w-5" />
             </Button>
-            <div className="flex flex-col items-center leading-tight">
-              <h2 className="text-base font-semibold text-white">
-                {language === 'id' ? 'Bagikan Ayat' : 'Share Verse'}
-              </h2>
-              {/* Visible stamp to confirm which build is running (especially in APK) */}
-              <span className="text-[10px] text-white/50 select-text">{UI_DEBUG_STAMP}</span>
-            </div>
+            <h2 className="text-base font-semibold text-white">
+              {language === 'id' ? 'Bagikan Ayat' : 'Share Verse'}
+            </h2>
             <div className="w-10" />
           </div>
 
@@ -974,36 +962,8 @@ export const AyatCardShare = ({
               })}
             </div>
 
-            {/* Action Buttons - Clean native implementation */}
-            <div 
-              className="flex gap-3 pt-2" 
-              onPointerDownCapture={(e) => {
-                if (!isNative) return;
-                const t = e.target as HTMLElement | null;
-                console.log('[AyatCardShare] actions wrapper pointerdown capture', {
-                  tag: t?.tagName,
-                  id: t?.id,
-                  class: t?.className,
-                });
-                toast.message('Tap area tombol terdeteksi');
-              }}
-              onTouchStartCapture={(e) => {
-                if (!isNative) return;
-                const t = e.target as HTMLElement | null;
-                console.log('[AyatCardShare] actions wrapper touchstart capture', {
-                  tag: t?.tagName,
-                  id: t?.id,
-                  class: (t as any)?.className,
-                });
-                toast.message('Touch area tombol terdeteksi');
-              }}
-              style={{ 
-                position: 'relative', 
-                zIndex: 9999,
-                touchAction: 'manipulation',
-                pointerEvents: 'auto',
-              }}
-            >
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               {/* Download Button */}
               <Button
                 variant="outline"
