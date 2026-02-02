@@ -90,6 +90,7 @@ export const AyatCardShare = ({
 }: AyatCardShareProps) => {
   const { language } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
+  const lastActionTapRef = useRef<number>(0);
   const [selectedAyahs, setSelectedAyahs] = useState<number[]>([initialAyahIndex]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAction, setProcessingAction] = useState<'share' | 'download' | null>(null);
@@ -98,6 +99,14 @@ export const AyatCardShare = ({
 
   const theme = THEMES[currentTheme];
   const isNative = Capacitor.isNativePlatform();
+
+  const runOncePerTap = useCallback((fn: () => void) => {
+    const now = Date.now();
+    // Prevent duplicate fire on Android where onClick + onTouchEnd can both trigger.
+    if (now - lastActionTapRef.current < 600) return;
+    lastActionTapRef.current = now;
+    fn();
+  }, []);
 
   // Reset when modal opens with new ayah
   useEffect(() => {
@@ -717,6 +726,7 @@ export const AyatCardShare = ({
 
   // Main handlers that route to native or web
   const handleShare = useCallback(() => {
+    console.log('[AyatCardShare] handleShare tapped. isNative=', isNative, 'platform=', Capacitor.getPlatform());
     if (isNative) {
       handleNativeShare();
     } else {
@@ -725,6 +735,7 @@ export const AyatCardShare = ({
   }, [isNative, handleNativeShare, handleWebShare]);
 
   const handleDownload = useCallback(() => {
+    console.log('[AyatCardShare] handleDownload tapped. isNative=', isNative, 'platform=', Capacitor.getPlatform());
     if (isNative) {
       handleNativeDownload();
     } else {
@@ -966,7 +977,17 @@ export const AyatCardShare = ({
               <Button
                 variant="outline"
                 className="flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                onClick={handleDownload}
+                onClick={() => runOncePerTap(handleDownload)}
+                onPointerUp={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  runOncePerTap(handleDownload);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  runOncePerTap(handleDownload);
+                }}
                 disabled={isProcessing}
                 style={{
                   touchAction: 'manipulation',
@@ -996,7 +1017,17 @@ export const AyatCardShare = ({
               {/* Share Button */}
               <Button
                 className="flex-1 gap-2 bg-white text-black hover:bg-white/90"
-                onClick={handleShare}
+                onClick={() => runOncePerTap(handleShare)}
+                onPointerUp={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  runOncePerTap(handleShare);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  runOncePerTap(handleShare);
+                }}
                 disabled={isProcessing}
                 style={{
                   touchAction: 'manipulation',
