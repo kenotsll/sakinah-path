@@ -970,6 +970,26 @@ export const AyatCardShare = ({
             {/* Action Buttons - Clean native implementation */}
             <div 
               className="flex gap-3 pt-2" 
+              onPointerDownCapture={(e) => {
+                if (!isNative) return;
+                const t = e.target as HTMLElement | null;
+                console.log('[AyatCardShare] actions wrapper pointerdown capture', {
+                  tag: t?.tagName,
+                  id: t?.id,
+                  class: t?.className,
+                });
+                toast.message('Tap area tombol terdeteksi');
+              }}
+              onTouchStartCapture={(e) => {
+                if (!isNative) return;
+                const t = e.target as HTMLElement | null;
+                console.log('[AyatCardShare] actions wrapper touchstart capture', {
+                  tag: t?.tagName,
+                  id: t?.id,
+                  class: (t as any)?.className,
+                });
+                toast.message('Touch area tombol terdeteksi');
+              }}
               style={{ 
                 position: 'relative', 
                 zIndex: 9999,
