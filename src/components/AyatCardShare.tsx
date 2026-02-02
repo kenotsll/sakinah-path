@@ -727,6 +727,9 @@ export const AyatCardShare = ({
   // Main handlers that route to native or web
   const handleShare = useCallback(() => {
     console.log('[AyatCardShare] handleShare tapped. isNative=', isNative, 'platform=', Capacitor.getPlatform());
+    // In APK, if user says "no response", this toast helps confirm the tap handler is reached.
+    // (If this never appears, the issue is touch/click event not firing / element overlaying.)
+    if (isNative) toast.message('Tap: Bagikan');
     if (isNative) {
       handleNativeShare();
     } else {
@@ -736,6 +739,7 @@ export const AyatCardShare = ({
 
   const handleDownload = useCallback(() => {
     console.log('[AyatCardShare] handleDownload tapped. isNative=', isNative, 'platform=', Capacitor.getPlatform());
+    if (isNative) toast.message('Tap: Unduh');
     if (isNative) {
       handleNativeDownload();
     } else {
@@ -977,17 +981,10 @@ export const AyatCardShare = ({
               <Button
                 variant="outline"
                 className="flex-1 gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                type="button"
+                onPointerDown={() => runOncePerTap(handleDownload)}
+                onTouchStart={() => runOncePerTap(handleDownload)}
                 onClick={() => runOncePerTap(handleDownload)}
-                onPointerUp={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  runOncePerTap(handleDownload);
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  runOncePerTap(handleDownload);
-                }}
                 disabled={isProcessing}
                 style={{
                   touchAction: 'manipulation',
@@ -1017,17 +1014,10 @@ export const AyatCardShare = ({
               {/* Share Button */}
               <Button
                 className="flex-1 gap-2 bg-white text-black hover:bg-white/90"
+                type="button"
+                onPointerDown={() => runOncePerTap(handleShare)}
+                onTouchStart={() => runOncePerTap(handleShare)}
                 onClick={() => runOncePerTap(handleShare)}
-                onPointerUp={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  runOncePerTap(handleShare);
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  runOncePerTap(handleShare);
-                }}
                 disabled={isProcessing}
                 style={{
                   touchAction: 'manipulation',
