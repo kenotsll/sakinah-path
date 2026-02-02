@@ -77,6 +77,9 @@ const getTranslationFontSize = (textLength: number): string => {
   return '1.125rem';
 };
 
+// Bump this string whenever we want to verify the newest APK/preview is actually running.
+const UI_DEBUG_STAMP = "dbg-2026-02-02-01";
+
 export const AyatCardShare = ({ 
   isOpen, 
   onClose, 
@@ -784,9 +787,13 @@ export const AyatCardShare = ({
             >
               <X className="h-5 w-5" />
             </Button>
-            <h2 className="text-base font-semibold text-white">
-              {language === 'id' ? 'Bagikan Ayat' : 'Share Verse'}
-            </h2>
+            <div className="flex flex-col items-center leading-tight">
+              <h2 className="text-base font-semibold text-white">
+                {language === 'id' ? 'Bagikan Ayat' : 'Share Verse'}
+              </h2>
+              {/* Visible stamp to confirm which build is running (especially in APK) */}
+              <span className="text-[10px] text-white/50 select-text">{UI_DEBUG_STAMP}</span>
+            </div>
             <div className="w-10" />
           </div>
 
