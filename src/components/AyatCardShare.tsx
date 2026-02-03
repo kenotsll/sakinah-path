@@ -88,6 +88,7 @@ export const AyatCardShare = ({
   const { language } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
   const lastActionTapRef = useRef<number>(0);
+  const [lastRenderError, setLastRenderError] = useState<string | null>(null);
   const [selectedAyahs, setSelectedAyahs] = useState<number[]>([initialAyahIndex]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAction, setProcessingAction] = useState<'share' | 'download' | null>(null);
@@ -110,6 +111,7 @@ export const AyatCardShare = ({
     if (isOpen) {
       setSelectedAyahs([initialAyahIndex]);
       setDownloadSuccess(false);
+      setLastRenderError(null);
     }
   }, [isOpen, initialAyahIndex]);
 
@@ -179,6 +181,7 @@ export const AyatCardShare = ({
     
     return new Promise((resolve) => {
       try {
+        setLastRenderError(null);
         console.log('[AyatCardShare] Creating canvas...');
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -250,7 +253,12 @@ export const AyatCardShare = ({
         
         // Draw Arabic text (RTL, centered vertically)
         ctx.textAlign = 'right';
-        ctx.direction = 'rtl';
+        // iOS WebKit compatibility: `direction` isn't consistently supported.
+        try {
+          (ctx as unknown as { direction?: string }).direction = 'rtl';
+        } catch (e) {
+          console.warn('[AyatCardShare] ctx.direction not supported:', e);
+        }
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `${arabicSize}px ${arabicFont}`;
         
@@ -272,7 +280,11 @@ export const AyatCardShare = ({
         
         // Draw Translation
         ctx.textAlign = 'left';
-        ctx.direction = 'ltr';
+        try {
+          (ctx as unknown as { direction?: string }).direction = 'ltr';
+        } catch (e) {
+          console.warn('[AyatCardShare] ctx.direction not supported (ltr):', e);
+        }
         ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.font = `600 ${translationSize}px ${latinFont}`;
         
@@ -321,8 +333,11 @@ export const AyatCardShare = ({
         resolve(dataUrl);
       } catch (error) {
         console.error('[AyatCardShare] ========== generateImageDataUrl FAILED ==========');
-        console.error('[AyatCardShare] Error:', error instanceof Error ? error.message : String(error));
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[AyatCardShare] Error:', msg);
         console.error('[AyatCardShare] Stack:', error instanceof Error ? error.stack : 'N/A');
+        // Surface a short error string for in-UI debugging on iOS.
+        setLastRenderError(msg?.slice(0, 180) || 'Unknown error');
         resolve(null);
       }
     });
@@ -613,13 +628,13 @@ export const AyatCardShare = ({
       const errMsg = error instanceof Error ? error.message : String(error);
       if (!errMsg.includes('AbortError')) {
         console.error('[AyatCardShare] Web share failed:', errMsg);
-        toast.error('Gagal membuat gambar. Coba lagi.');
+        toast.error(lastRenderError ? `Gagal membuat gambar: ${lastRenderError}` : 'Gagal membuat gambar. Coba lagi.');
       }
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
     }
-  }, [generateImageDataUrl, surahName, ayahRangeText]);
+  }, [generateImageDataUrl, surahName, ayahRangeText, lastRenderError]);
 
   // =====================================================
   // WEB DOWNLOAD - Fallback for browser
@@ -653,12 +668,12 @@ export const AyatCardShare = ({
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       console.error('[AyatCardShare] Web download failed:', errMsg);
-      toast.error('Gagal menyimpan gambar. Coba lagi.');
+      toast.error(lastRenderError ? `Gagal membuat gambar: ${lastRenderError}` : 'Gagal menyimpan gambar. Coba lagi.');
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
     }
-  }, [generateImageDataUrl, surahName, ayahRangeText]);
+  }, [generateImageDataUrl, surahName, ayahRangeText, lastRenderError]);
 
   // Main handlers that route to native or web
   const handleShare = useCallback(() => {
