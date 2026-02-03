@@ -24,30 +24,35 @@ interface AyatCardShareProps {
   initialAyahIndex: number;
 }
 
-// Theme configurations - Vibrant solid colors like Spotify
-type ThemeType = 'green' | 'maroon' | 'navy' | 'coral';
+// Theme configurations - Sage to Deep Green gradient (Spotify aesthetic)
+type ThemeType = 'sage' | 'forest' | 'ocean' | 'dusk';
 
 interface Theme {
   name: string;
   background: string;
+  gradient: string;
 }
 
 const THEMES: Record<ThemeType, Theme> = {
-  green: {
-    name: 'Hijau',
+  sage: {
+    name: 'Sage',
+    background: '#2D5A4A',
+    gradient: 'linear-gradient(165deg, #6B8E7D 0%, #2D5A4A 35%, #1B4332 100%)',
+  },
+  forest: {
+    name: 'Forest',
     background: '#1B4332',
+    gradient: 'linear-gradient(165deg, #40916C 0%, #2D6A4F 35%, #1B4332 100%)',
   },
-  maroon: {
-    name: 'Maroon',
-    background: '#722F37',
+  ocean: {
+    name: 'Ocean',
+    background: '#1A3A4A',
+    gradient: 'linear-gradient(165deg, #4A7C8A 0%, #2A5A6A 35%, #1A3A4A 100%)',
   },
-  navy: {
-    name: 'Biru',
-    background: '#1A1A2E',
-  },
-  coral: {
-    name: 'Coral',
-    background: '#E85D75',
+  dusk: {
+    name: 'Dusk',
+    background: '#3A2A4A',
+    gradient: 'linear-gradient(165deg, #6A5A7A 0%, #4A3A5A 35%, #3A2A4A 100%)',
   },
 };
 
@@ -96,7 +101,7 @@ export const AyatCardShare = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAction, setProcessingAction] = useState<'share' | 'download' | null>(null);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState<ThemeType>('green');
+  const [currentTheme, setCurrentTheme] = useState<ThemeType>('sage');
 
   const theme = THEMES[currentTheme];
   const isNative = Capacitor.isNativePlatform();
@@ -256,7 +261,7 @@ export const AyatCardShare = ({
       <div style="
         width: 1080px;
         height: 1920px;
-        background: ${theme.background};
+        background: ${theme.gradient};
         display: flex;
         flex-direction: column;
         padding: 80px 60px;
@@ -743,7 +748,7 @@ export const AyatCardShare = ({
   }, [isNative, handleNativeDownload, handleWebDownload]);
 
   const cycleTheme = () => {
-    const themes: ThemeType[] = ['green', 'maroon', 'navy', 'coral'];
+    const themes: ThemeType[] = ['sage', 'forest', 'ocean', 'dusk'];
     const currentIndex = themes.indexOf(currentTheme);
     setCurrentTheme(themes[(currentIndex + 1) % themes.length]);
   };
@@ -810,7 +815,7 @@ export const AyatCardShare = ({
               ref={cardRef}
               className="rounded-2xl overflow-hidden shadow-2xl mx-auto"
               style={{ 
-                background: theme.background,
+                background: theme.gradient,
                 aspectRatio: '9/16',
                 maxHeight: '55vh',
                 width: '100%',
@@ -818,7 +823,7 @@ export const AyatCardShare = ({
             >
               <div 
                 className="w-full h-full flex flex-col relative p-6"
-                style={{ background: theme.background }}
+                style={{ background: 'transparent' }}
               >
                 {/* Top Right - Metadata */}
                 <div className="absolute top-4 right-4 text-right">

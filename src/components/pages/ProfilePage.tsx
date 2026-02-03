@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
-  ArrowLeft, Camera, User, Mail, Phone, Globe, Palette, Bell, 
+  ArrowLeft, User, Mail, Phone, Globe, Palette, Bell, 
   Check, LogOut, Loader2, HelpCircle, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -172,9 +172,6 @@ export const ProfilePage = ({ onBack }: ProfilePageProps) => {
                 {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
-            <button className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-              <Camera className="h-4 w-4" />
-            </button>
           </div>
           <h2 className="text-lg font-semibold text-foreground">
             {profile?.full_name || 'Pengguna'}

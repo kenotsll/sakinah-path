@@ -1,8 +1,11 @@
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, X, Clock, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { Bell, X, Clock, CheckCircle2, Trash2 } from "lucide-react";
+import { useRealtimeNotifications, AppNotification } from "@/hooks/useRealtimeNotifications";
+import { formatDistanceToNow } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface NotificationPanelProps {
   isOpen: boolean;
@@ -11,67 +14,23 @@ interface NotificationPanelProps {
   hasPermission: boolean;
 }
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  type: "reminder" | "achievement" | "info";
-  read: boolean;
-}
-
-const sampleNotifications: Notification[] = [
-  {
-    id: "1",
-    title: "Waktu Dzuhur Telah Tiba 🕌",
-    message: "Jangan lupa shalat dzuhur tepat waktu.",
-    time: "12:05",
-    type: "reminder",
-    read: false,
-  },
-  {
-    id: "2",
-    title: "Streak 7 Hari! 🎉",
-    message: "Alhamdulillah, kamu sudah konsisten 7 hari berturut-turut.",
-    time: "Kemarin",
-    type: "achievement",
-    read: true,
-  },
-  {
-    id: "3",
-    title: "Refleksi Malam 🌙",
-    message: "Sudah waktunya menulis catatan refleksi hari ini.",
-    time: "Kemarin",
-    type: "reminder",
-    read: true,
-  },
-  {
-    id: "4",
-    title: "Video Baru Tersedia",
-    message: "Ustadz Adi Hidayat: Cara Taubat Terbaik",
-    time: "2 hari lalu",
-    type: "info",
-    read: true,
-  },
-];
-
 export const NotificationPanel = ({
   isOpen,
   onClose,
   onRequestPermission,
   hasPermission,
 }: NotificationPanelProps) => {
-  const [notifications, setNotifications] = useState(sampleNotifications);
+  const { 
+    notifications, 
+    isLoading, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead,
+    deleteNotification 
+  } = useRealtimeNotifications();
+  const { language } = useLanguage();
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const getIcon = (type: Notification["type"]) => {
+  const getIcon = (type: AppNotification["type"]) => {
     switch (type) {
       case "reminder":
         return <Clock className="h-4 w-4" />;
@@ -82,7 +41,7 @@ export const NotificationPanel = ({
     }
   };
 
-  const getIconBg = (type: Notification["type"]) => {
+  const getIconBg = (type: AppNotification["type"]) => {
     switch (type) {
       case "reminder":
         return "bg-primary/20 text-primary";
@@ -90,6 +49,17 @@ export const NotificationPanel = ({
         return "bg-accent/20 text-accent";
       default:
         return "bg-secondary text-secondary-foreground";
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), {
+        addSuffix: true,
+        locale: language === 'id' ? idLocale : undefined,
+      });
+    } catch {
+      return dateString;
     }
   };
 
@@ -120,23 +90,39 @@ export const NotificationPanel = ({
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Notifikasi</h3>
+                <h3 className="font-semibold text-foreground">
+                  {language === 'id' ? 'Notifikasi' : 'Notifications'}
+                </h3>
                 {unreadCount > 0 && (
                   <span className="px-2 py-0.5 text-xs font-medium bg-accent text-accent-foreground rounded-full">
                     {unreadCount}
                   </span>
                 )}
               </div>
-              <Button variant="ghost" size="iconSm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                {unreadCount > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={markAllAsRead}
+                    className="text-xs text-muted-foreground"
+                  >
+                    {language === 'id' ? 'Tandai semua dibaca' : 'Mark all read'}
+                  </Button>
+                )}
+                <Button variant="ghost" size="iconSm" onClick={onClose}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Permission Banner */}
             {!hasPermission && (
               <div className="p-3 bg-hope border-b border-border">
                 <p className="text-xs text-hope-foreground mb-2">
-                  Aktifkan notifikasi untuk menerima pengingat ibadah
+                  {language === 'id' 
+                    ? 'Aktifkan notifikasi untuk menerima pengingat ibadah'
+                    : 'Enable notifications to receive worship reminders'}
                 </p>
                 <Button
                   variant="spiritual"
@@ -145,18 +131,25 @@ export const NotificationPanel = ({
                   onClick={onRequestPermission}
                 >
                   <Bell className="h-4 w-4 mr-1" />
-                  Aktifkan Notifikasi
+                  {language === 'id' ? 'Aktifkan Notifikasi' : 'Enable Notifications'}
                 </Button>
               </div>
             )}
 
             {/* Notifications List */}
             <div className="max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
+              {isLoading ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'id' ? 'Memuat...' : 'Loading...'}
+                  </p>
+                </div>
+              ) : notifications.length === 0 ? (
                 <div className="p-8 text-center">
                   <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    Belum ada notifikasi
+                    {language === 'id' ? 'Belum ada notifikasi' : 'No notifications yet'}
                   </p>
                 </div>
               ) : (
@@ -183,15 +176,28 @@ export const NotificationPanel = ({
                           <p className="text-sm font-medium text-foreground">
                             {notification.title}
                           </p>
-                          {!notification.read && (
-                            <span className="h-2 w-2 rounded-full bg-accent flex-shrink-0 mt-1.5" />
-                          )}
+                          <div className="flex items-center gap-1">
+                            {!notification.read && (
+                              <span className="h-2 w-2 rounded-full bg-accent flex-shrink-0" />
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="iconSm"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteNotification(notification.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           {notification.message}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {notification.time}
+                          {formatTime(notification.created_at)}
                         </p>
                       </div>
                     </div>
