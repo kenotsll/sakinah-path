@@ -174,174 +174,173 @@ export const AyatCardShare = ({
     });
   };
 
-  // Generate Base64 data URL using Canvas API directly (Safari/iOS compatible)
-  const generateImageDataUrl = useCallback(async (): Promise<string | null> => {
+  const renderAyatCanvas = useCallback((): HTMLCanvasElement | null => {
     const startTime = Date.now();
-    console.log('[AyatCardShare] ========== generateImageDataUrl START (Canvas API) ==========');
-    
-    return new Promise((resolve) => {
-      try {
-        setLastRenderError(null);
-        console.log('[AyatCardShare] Creating canvas...');
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        if (!ctx) {
-          console.error('[AyatCardShare] Failed to get canvas 2d context');
-          resolve(null);
-          return;
-        }
-        console.log('[AyatCardShare] Canvas context obtained');
-        
-        // Set canvas size for 9:16 aspect ratio (Instagram Story)
-        canvas.width = 1080;
-        canvas.height = 1920;
-        console.log('[AyatCardShare] Canvas size set:', canvas.width, 'x', canvas.height);
-        
-        // Parse gradient colors from theme
-        const gradientColors = theme.gradient.match(/#[a-fA-F0-9]{6}/g) || [theme.background, theme.background];
-        console.log('[AyatCardShare] Gradient colors:', gradientColors);
-        
-        // Draw gradient background
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width * 0.3, canvas.height);
-        gradient.addColorStop(0, gradientColors[0] || '#6B8E7D');
-        gradient.addColorStop(0.35, gradientColors[1] || '#2D5A4A');
-        gradient.addColorStop(1, gradientColors[2] || gradientColors[1] || '#1B4332');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        console.log('[AyatCardShare] Background drawn');
-        
-        // Use system fonts as fallback for maximum compatibility
-        const arabicFont = 'serif'; // Fallback to system serif for Arabic
-        const latinFont = 'sans-serif'; // Fallback to system sans-serif
-        
-        // Top Right Metadata
-        ctx.textAlign = 'right';
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.font = `600 28px ${latinFont}`;
-        ctx.fillText(surahName, canvas.width - 60, 110);
-        
-        if (surahMeaning) {
-          ctx.fillStyle = 'rgba(255,255,255,0.5)';
-          ctx.font = `22px ${latinFont}`;
-          ctx.fillText(surahMeaning, canvas.width - 60, 145);
-        }
-        
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.font = `22px ${latinFont}`;
-        ctx.fillText(`Juz ${juzNumber}`, canvas.width - 60, surahMeaning ? 180 : 145);
-        console.log('[AyatCardShare] Metadata drawn');
-        
-        // Calculate font sizes based on text length
-        const arabicSize = combinedArabicText.length > 300 ? 42 : 
-                           combinedArabicText.length > 200 ? 52 : 
-                           combinedArabicText.length > 100 ? 62 : 72;
-        
-        const translationSize = combinedTranslation.length > 250 ? 32 : 
-                                combinedTranslation.length > 150 ? 38 : 44;
-        
-        // Build Arabic text with ayah numbers
-        const arabicTextWithNumbers = selectedContent
-          .map((a) => {
-            const text = a.text?.trim?.() ?? a.text;
-            const num = a.numberInSurah;
-            return `${text} ﴿${num}﴾`;
-          })
-          .join(' ');
-        
-        console.log('[AyatCardShare] Arabic text length:', arabicTextWithNumbers.length);
-        
-        // Draw Arabic text (RTL, centered vertically)
-        ctx.textAlign = 'right';
-        // iOS WebKit compatibility: `direction` isn't consistently supported.
-        try {
-          (ctx as unknown as { direction?: string }).direction = 'rtl';
-        } catch (e) {
-          console.warn('[AyatCardShare] ctx.direction not supported:', e);
-        }
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `${arabicSize}px ${arabicFont}`;
-        
-        // Word wrap Arabic text
-        const maxWidth = canvas.width - 120;
-        const arabicLines = wrapTextHelper(ctx, arabicTextWithNumbers, maxWidth);
-        const lineHeight = arabicSize * 2.2;
-        const totalTextHeight = arabicLines.length * lineHeight + translationSize * 2 + 80;
-        let yPosition = (canvas.height - totalTextHeight) / 2 + arabicSize;
-        
-        console.log('[AyatCardShare] Arabic lines:', arabicLines.length);
-        
-        arabicLines.forEach((line) => {
-          ctx.fillText(line, canvas.width - 60, yPosition);
-          yPosition += lineHeight;
-        });
-        
-        yPosition += 20; // Gap between Arabic and translation
-        
-        // Draw Translation
-        ctx.textAlign = 'left';
-        try {
-          (ctx as unknown as { direction?: string }).direction = 'ltr';
-        } catch (e) {
-          console.warn('[AyatCardShare] ctx.direction not supported (ltr):', e);
-        }
-        ctx.fillStyle = 'rgba(255,255,255,0.95)';
-        ctx.font = `600 ${translationSize}px ${latinFont}`;
-        
-        const translationWithQuotes = `"${combinedTranslation}"`;
-        const translationLines = wrapTextHelper(ctx, translationWithQuotes, maxWidth);
-        const translationLineHeight = translationSize * 1.6;
-        
-        console.log('[AyatCardShare] Translation lines:', translationLines.length);
-        
-        translationLines.forEach((line) => {
-          ctx.fillText(line, 60, yPosition);
-          yPosition += translationLineHeight;
-        });
-        
-        // Draw Ayah Number
-        yPosition += 20;
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = `28px ${latinFont}`;
-        ctx.fillText(ayahRangeText, 60, yPosition);
-        
-        // Bottom Left Branding - Logo box
-        const logoY = canvas.height - 100;
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        roundRectHelper(ctx, 60, logoY - 36, 48, 48, 12);
-        ctx.fill();
-        
-        // Logo text
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `700 24px ${arabicFont}`;
-        ctx.textAlign = 'center';
-        ctx.fillText('إ', 84, logoY + 4);
-        
-        // Brand name
-        ctx.textAlign = 'left';
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.font = `500 28px ${latinFont}`;
-        ctx.fillText('Istiqamah', 124, logoY);
-        
-        console.log('[AyatCardShare] All elements drawn, converting to dataURL...');
-        
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        console.log('[AyatCardShare] Canvas rendered successfully in', Date.now() - startTime, 'ms');
-        console.log('[AyatCardShare] DataURL length:', dataUrl.length);
-        console.log('[AyatCardShare] ========== generateImageDataUrl SUCCESS ==========');
-        
-        resolve(dataUrl);
-      } catch (error) {
-        console.error('[AyatCardShare] ========== generateImageDataUrl FAILED ==========');
-        const msg = error instanceof Error ? error.message : String(error);
-        console.error('[AyatCardShare] Error:', msg);
-        console.error('[AyatCardShare] Stack:', error instanceof Error ? error.stack : 'N/A');
-        // Surface a short error string for in-UI debugging on iOS.
-        setLastRenderError(msg?.slice(0, 180) || 'Unknown error');
-        resolve(null);
-      }
+    console.log('[AyatCardShare] ========== renderAyatCanvas START ==========');
+    setLastRenderError(null);
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.error('[AyatCardShare] Failed to get canvas 2d context');
+      setLastRenderError('Canvas 2D context unavailable');
+      return null;
+    }
+
+    // 9:16
+    canvas.width = 1080;
+    canvas.height = 1920;
+
+    const gradientColors = theme.gradient.match(/#[a-fA-F0-9]{6}/g) || [theme.background, theme.background];
+    const bg = ctx.createLinearGradient(0, 0, canvas.width * 0.3, canvas.height);
+    bg.addColorStop(0, gradientColors[0] || '#6B8E7D');
+    bg.addColorStop(0.35, gradientColors[1] || '#2D5A4A');
+    bg.addColorStop(1, gradientColors[2] || gradientColors[1] || '#1B4332');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // System fonts for max iOS compatibility
+    const arabicFont = 'serif';
+    const latinFont = 'sans-serif';
+
+    // Metadata
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = `600 28px ${latinFont}`;
+    ctx.fillText(surahName, canvas.width - 60, 110);
+
+    if (surahMeaning) {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = `22px ${latinFont}`;
+      ctx.fillText(surahMeaning, canvas.width - 60, 145);
+    }
+
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = `22px ${latinFont}`;
+    ctx.fillText(`Juz ${juzNumber}`, canvas.width - 60, surahMeaning ? 180 : 145);
+
+    const arabicSize = combinedArabicText.length > 300 ? 42 :
+      combinedArabicText.length > 200 ? 52 :
+        combinedArabicText.length > 100 ? 62 : 72;
+
+    const translationSize = combinedTranslation.length > 250 ? 32 :
+      combinedTranslation.length > 150 ? 38 : 44;
+
+    const arabicTextWithNumbers = selectedContent
+      .map((a) => {
+        const text = a.text?.trim?.() ?? a.text;
+        const num = a.numberInSurah;
+        return `${text} ﴿${num}﴾`;
+      })
+      .join(' ');
+
+    // Arabic
+    ctx.textAlign = 'right';
+    try {
+      (ctx as unknown as { direction?: string }).direction = 'rtl';
+    } catch {
+      // ignore
+    }
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `${arabicSize}px ${arabicFont}`;
+
+    const maxWidth = canvas.width - 120;
+    const arabicLines = wrapTextHelper(ctx, arabicTextWithNumbers, maxWidth);
+    const lineHeight = arabicSize * 2.2;
+    const totalTextHeight = arabicLines.length * lineHeight + translationSize * 2 + 80;
+    let yPosition = (canvas.height - totalTextHeight) / 2 + arabicSize;
+
+    arabicLines.forEach((line) => {
+      ctx.fillText(line, canvas.width - 60, yPosition);
+      yPosition += lineHeight;
     });
+
+    yPosition += 20;
+
+    // Translation
+    ctx.textAlign = 'left';
+    try {
+      (ctx as unknown as { direction?: string }).direction = 'ltr';
+    } catch {
+      // ignore
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.font = `600 ${translationSize}px ${latinFont}`;
+
+    const translationWithQuotes = `"${combinedTranslation}"`;
+    const translationLines = wrapTextHelper(ctx, translationWithQuotes, maxWidth);
+    const translationLineHeight = translationSize * 1.6;
+    translationLines.forEach((line) => {
+      ctx.fillText(line, 60, yPosition);
+      yPosition += translationLineHeight;
+    });
+
+    // Ayah range
+    yPosition += 20;
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = `28px ${latinFont}`;
+    ctx.fillText(ayahRangeText, 60, yPosition);
+
+    // Branding
+    const logoY = canvas.height - 100;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    roundRectHelper(ctx, 60, logoY - 36, 48, 48, 12);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `700 24px ${arabicFont}`;
+    ctx.textAlign = 'center';
+    ctx.fillText('إ', 84, logoY + 4);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = `500 28px ${latinFont}`;
+    ctx.fillText('Istiqamah', 124, logoY);
+
+    console.log('[AyatCardShare] Canvas rendered in', Date.now() - startTime, 'ms');
+    console.log('[AyatCardShare] ========== renderAyatCanvas SUCCESS ==========');
+    return canvas;
   }, [theme.background, theme.gradient, combinedArabicText, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText, selectedContent]);
+
+  // Generate Base64 data URL (used by native flow)
+  const generateImageDataUrl = useCallback(async (): Promise<string | null> => {
+    try {
+      const canvas = renderAyatCanvas();
+      if (!canvas) return null;
+      return canvas.toDataURL('image/png', 1.0);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLastRenderError(msg?.slice(0, 180) || 'Unknown error');
+      return null;
+    }
+  }, [renderAyatCanvas]);
+
+  // Generate Blob (preferred on iOS web to avoid huge base64 memory)
+  const generateImageBlob = useCallback(async (): Promise<Blob | null> => {
+    try {
+      const canvas = renderAyatCanvas();
+      if (!canvas) return null;
+
+      return await new Promise((resolve) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              setLastRenderError('canvas.toBlob() returned null');
+              resolve(null);
+              return;
+            }
+            resolve(blob);
+          },
+          'image/png',
+          1.0
+        );
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLastRenderError(msg?.slice(0, 180) || 'Unknown error');
+      return null;
+    }
+  }, [renderAyatCanvas]);
   
   // Helper function to wrap text (defined outside useCallback to avoid recreation)
   const wrapTextHelper = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
@@ -594,14 +593,8 @@ export const AyatCardShare = ({
     setProcessingAction('share');
 
     try {
-      const dataUrl = await generateImageDataUrl();
-      if (!dataUrl) {
-        throw new Error('Gagal membuat gambar');
-      }
-
-      // Convert dataUrl to blob
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
+      const blob = await generateImageBlob();
+      if (!blob) throw new Error('Gagal membuat gambar');
       const file = new File([blob], `istiqamah-${surahName}.png`, { type: 'image/png' });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -634,7 +627,7 @@ export const AyatCardShare = ({
       setIsProcessing(false);
       setProcessingAction(null);
     }
-  }, [generateImageDataUrl, surahName, ayahRangeText, lastRenderError]);
+  }, [generateImageBlob, surahName, ayahRangeText, lastRenderError]);
 
   // =====================================================
   // WEB DOWNLOAD - Fallback for browser
@@ -646,13 +639,8 @@ export const AyatCardShare = ({
     setProcessingAction('download');
 
     try {
-      const dataUrl = await generateImageDataUrl();
-      if (!dataUrl) {
-        throw new Error('Gagal membuat gambar');
-      }
-
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
+      const blob = await generateImageBlob();
+      if (!blob) throw new Error('Gagal membuat gambar');
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = `istiqamah-${surahName}-${ayahRangeText.replace(/\s/g, '')}.png`;
