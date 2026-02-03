@@ -383,7 +383,6 @@ export const AyatCardShare = ({
         console.error('[AyatCardShare] Container innerHTML length:', container.innerHTML.length);
         console.error('[AyatCardShare] Container children count:', container.children.length);
         document.body.removeChild(container);
-        alert('Error: Story element tidak ditemukan');
         return null;
       }
       
@@ -395,39 +394,26 @@ export const AyatCardShare = ({
         clientHeight: storyEl.clientHeight,
       });
 
-      // Wait for fonts to render, especially Arabic fonts on Android
-      console.log('[AyatCardShare] [9/10] Waiting 500ms for fonts to render...');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for fonts to render, especially Arabic fonts on Android/iOS
+      console.log('[AyatCardShare] [9/10] Waiting 800ms for fonts to render...');
+      await new Promise(resolve => setTimeout(resolve, 800));
       console.log('[AyatCardShare] [9/10] Font wait complete');
 
       // Set up timeout warning at 5 seconds
       console.log('[AyatCardShare] [10/10] Starting toPng with 15s timeout...');
-      console.log('[AyatCardShare] [10/10] toPng options:', {
-        quality: 1,
-        pixelRatio: 1,
-        width: 1080,
-        height: 1920,
-        backgroundColor: theme.background,
-        skipFonts: false,
-      });
-      
-      let renderStuck = false;
-      const stuckWarningTimeout = setTimeout(() => {
-        renderStuck = true;
-        console.warn('[AyatCardShare] WARNING: Render stuck for 5+ seconds!');
-        alert('Proses Render Gambar Macet');
-      }, 5000);
       
       // Create a promise race between toPng and 15s timeout
       const timeoutPromise = new Promise<string>((_, reject) => {
         setTimeout(() => {
-          reject(new Error('toPng timeout after 15 seconds'));
+          reject(new Error('Render timeout'));
         }, 15000);
       });
       
       const toPngStartTime = Date.now();
       console.log('[AyatCardShare] [10/10] Calling toPng at:', toPngStartTime);
       
+      // Use skipFonts: true to avoid CORS issues with external fonts on iOS
+      // The fonts are already embedded via Google Fonts link, so we don't need html-to-image to fetch them
       const dataUrl = await Promise.race([
         toPng(storyEl, {
           quality: 1,
@@ -435,18 +421,19 @@ export const AyatCardShare = ({
           width: 1080,
           height: 1920,
           backgroundColor: theme.background,
-          skipFonts: false,
+          skipFonts: true, // Skip font embedding to avoid CORS/Load failed errors
+          cacheBust: true, // Prevent caching issues
+          fetchRequestInit: {
+            mode: 'cors',
+            cache: 'no-cache',
+          },
         }),
         timeoutPromise,
       ]);
       
-      // Clear the stuck warning timeout
-      clearTimeout(stuckWarningTimeout);
-      
       const toPngEndTime = Date.now();
       const toPngDuration = toPngEndTime - toPngStartTime;
       console.log('[AyatCardShare] [10/10] toPng completed in:', toPngDuration, 'ms');
-      console.log('[AyatCardShare] [10/10] Was render stuck warning shown?', renderStuck);
       
       document.body.removeChild(container);
       console.log('[AyatCardShare] Container removed from DOM');
@@ -459,7 +446,6 @@ export const AyatCardShare = ({
       console.error('[AyatCardShare] ========== generateImageDataUrl FAILED ==========');
       console.error('[AyatCardShare] Error type:', error instanceof Error ? error.constructor.name : typeof error);
       console.error('[AyatCardShare] Error message:', error instanceof Error ? error.message : String(error));
-      console.error('[AyatCardShare] Error stack:', error instanceof Error ? error.stack : 'N/A');
       console.error('[AyatCardShare] Time elapsed before error:', Date.now() - startTime, 'ms');
       
       // Cleanup
@@ -470,10 +456,9 @@ export const AyatCardShare = ({
         console.warn('[AyatCardShare] Container cleanup failed (may already be removed)');
       }
       
-      alert(`Render Error: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
-  }, [theme.background, combinedArabicText, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText, generateArabicWithCircledNumbers]);
+  }, [theme.background, theme.gradient, combinedArabicText, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText, generateArabicWithCircledNumbers]);
 
   // Extract base64 from data URL
   const dataUrlToBase64 = (dataUrl: string): string => {
@@ -549,9 +534,7 @@ export const AyatCardShare = ({
       if (errMsg.includes('cancel') || errMsg.includes('dismissed') || errMsg.includes('Share canceled')) {
         console.log('[AyatCardShare] User cancelled share');
       } else {
-        toast.error(`Gagal share: ${errMsg}`);
-        // Show alert for debugging on device
-        alert(`Share Error:\n${errMsg}`);
+        toast.error('Gagal membuat gambar. Coba lagi.');
       }
     } finally {
       setIsProcessing(false);
@@ -631,8 +614,7 @@ export const AyatCardShare = ({
       const errMsg = error instanceof Error ? error.message : String(error);
       console.error('[AyatCardShare] ===== NATIVE DOWNLOAD FAILED =====');
       console.error('[AyatCardShare] Error:', errMsg);
-      toast.error(`Gagal download: ${errMsg}`);
-      alert(`Download Error:\n${errMsg}`);
+      toast.error('Gagal menyimpan gambar. Coba lagi.');
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
@@ -683,7 +665,7 @@ export const AyatCardShare = ({
       const errMsg = error instanceof Error ? error.message : String(error);
       if (!errMsg.includes('AbortError')) {
         console.error('[AyatCardShare] Web share failed:', errMsg);
-        toast.error(`Gagal: ${errMsg}`);
+        toast.error('Gagal membuat gambar. Coba lagi.');
       }
     } finally {
       setIsProcessing(false);
@@ -723,7 +705,7 @@ export const AyatCardShare = ({
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       console.error('[AyatCardShare] Web download failed:', errMsg);
-      toast.error(`Gagal download: ${errMsg}`);
+      toast.error('Gagal menyimpan gambar. Coba lagi.');
     } finally {
       setIsProcessing(false);
       setProcessingAction(null);
