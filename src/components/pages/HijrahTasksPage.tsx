@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Circle, Plus, Calendar, X, Edit3, AlertTriangle, Star, Flag } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { WeeklyLineChart } from "@/components/WeeklyLineChart";
 import { useTasks, Task, Priority } from "@/hooks/useTasks";
@@ -41,6 +41,19 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<Task["category"]>("ibadah");
   const [newTaskPriority, setNewTaskPriority] = useState<Priority>("penting");
+  const addFormRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to add form when it opens
+  useEffect(() => {
+    if (isAddingTask && addFormRef.current) {
+      setTimeout(() => {
+        addFormRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }, 100);
+    }
+  }, [isAddingTask]);
 
   const handleAddTask = () => {
     if (newTaskTitle.trim()) {
@@ -111,6 +124,7 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
       <AnimatePresence>
         {isAddingTask && (
           <motion.div
+            ref={addFormRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

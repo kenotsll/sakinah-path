@@ -15,7 +15,7 @@ interface NotificationSchedule {
 const DEFAULT_SCHEDULES: NotificationSchedule[] = [
   {
     id: "streak-reminder-17",
-    title: "Pengingat Target Harian ⏰",
+    title: "Pengingat Target Harian",
     message: "Masih ada waktu 7 jam sebelum batas waktu. Selesaikan target 'Sangat Penting' untuk menjaga streak-mu!",
     hour: 17,
     minute: 0,
@@ -23,7 +23,7 @@ const DEFAULT_SCHEDULES: NotificationSchedule[] = [
   },
   {
     id: "streak-reminder-21",
-    title: "Pengingat Terakhir 🔥",
+    title: "Pengingat Terakhir",
     message: "Hanya tersisa 3 jam! Pastikan semua target 'Sangat Penting' sudah selesai untuk menjaga streak-mu.",
     hour: 21,
     minute: 0,
@@ -31,7 +31,7 @@ const DEFAULT_SCHEDULES: NotificationSchedule[] = [
   },
   {
     id: "muhasabah",
-    title: "Waktu Muhasabah 🌙",
+    title: "Waktu Muhasabah",
     message: "Sudahkah kita beristighfar hari ini? Yuk, tulis refleksimu sebelum tidur.",
     hour: 22,
     minute: 0,
@@ -39,7 +39,7 @@ const DEFAULT_SCHEDULES: NotificationSchedule[] = [
   },
   {
     id: "tahajjud",
-    title: "Panggilan Tahajjud ✨",
+    title: "Panggilan Tahajjud",
     message: "Pintu taubat terbuka lebar di sepertiga malam terakhir.",
     hour: 3,
     minute: 0,
@@ -47,7 +47,7 @@ const DEFAULT_SCHEDULES: NotificationSchedule[] = [
   },
   {
     id: "dzikir-pagi",
-    title: "Dzikir Pagi 🌅",
+    title: "Dzikir Pagi",
     message: "Mulai harimu dengan mengingat Allah. Baca dzikir pagi untuk keberkahan.",
     hour: 5,
     minute: 30,
@@ -55,7 +55,7 @@ const DEFAULT_SCHEDULES: NotificationSchedule[] = [
   },
   {
     id: "dzikir-petang",
-    title: "Dzikir Petang 🌆",
+    title: "Dzikir Petang",
     message: "Jangan lupa dzikir petang. Lindungi harimu dengan doa.",
     hour: 16,
     minute: 30,
