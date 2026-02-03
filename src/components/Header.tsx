@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Bell, User, MapPin, RefreshCw } from "lucide-react";
+import logoIstiqamah from "@/assets/logo-istiqamah.png";
 import { Button } from "@/components/ui/button";
 import { usePrayerTimes } from "@/hooks/usePrayerTimes";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -36,8 +37,8 @@ export const Header = ({ userName, onOpenProfile, onOpenNotifications }: HeaderP
       <div className="px-5 py-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full gradient-hero flex items-center justify-center shadow-glow">
-              <span className="text-primary-foreground font-arabic text-lg">إ</span>
+            <div className="h-10 w-10 rounded-full overflow-hidden shadow-glow">
+              <img src={logoIstiqamah} alt="Istiqamah" className="h-full w-full object-cover" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{getGreeting()}</p>
