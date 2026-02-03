@@ -3,9 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Share2, Download, Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { toPng } from "html-to-image";
 import { Ayah } from "@/hooks/useQuran";
-import DOMPurify from "dompurify";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { Filesystem, Directory } from "@capacitor/filesystem";
@@ -54,13 +52,6 @@ const THEMES: Record<ThemeType, Theme> = {
     background: '#3A2A4A',
     gradient: 'linear-gradient(165deg, #6A5A7A 0%, #4A3A5A 35%, #3A2A4A 100%)',
   },
-};
-
-// Escape HTML special characters to prevent XSS
-const escapeHtml = (text: string): string => {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 };
 
 // Check if text is "long"
@@ -141,18 +132,6 @@ export const AyatCardShare = ({
   const combinedArabicText = selectedContent.map(a => a.text?.trim?.() ?? a.text).join(' ');
   const combinedTranslation = selectedContent.map(a => a.translation).join(' ');
 
-  // Generate HTML for Arabic text with circled numbers (for image export)
-  const generateArabicWithCircledNumbers = useCallback(() => {
-    return selectedContent
-      .map((a) => {
-        const text = a.text?.trim?.() ?? a.text;
-        const num = a.numberInSurah;
-        const circledNum = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:1.8em;height:1.8em;border:2px solid rgba(255,255,255,0.5);border-radius:50%;font-size:0.45em;margin:0 0.3em;vertical-align:middle;color:rgba(255,255,255,0.8);font-family:sans-serif;font-weight:600;padding:2px;">${num}</span>`;
-        return `${text}${circledNum}`;
-      })
-      .join(' ');
-  }, [selectedContent]);
-
   // For preview display - use simple Arabic number marker
   const combinedArabicPreview = selectedContent
     .map((a) => {
@@ -193,272 +172,178 @@ export const AyatCardShare = ({
     });
   };
 
-  // Generate Base64 data URL from component
-  // Generate Base64 data URL from component
+  // Generate Base64 data URL using Canvas API directly (Safari/iOS compatible)
   const generateImageDataUrl = useCallback(async (): Promise<string | null> => {
     const startTime = Date.now();
-    console.log('[AyatCardShare] ========== generateImageDataUrl START ==========');
-    console.log('[AyatCardShare] [1/10] Initializing... timestamp:', startTime);
+    console.log('[AyatCardShare] ========== generateImageDataUrl START (Canvas API) ==========');
     
-    // Create a temporary container for the full-size story
-    // Use opacity: 0 instead of left: -9999px to keep element in document flow
-    // This ensures html-to-image can capture the element properly on Android
-    console.log('[AyatCardShare] [2/10] Creating container element...');
-    const container = document.createElement('div');
-    container.id = 'ayat-export-container';
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.width = '1080px';
-    container.style.height = '1920px';
-    container.style.opacity = '0';
-    container.style.pointerEvents = 'none';
-    container.style.zIndex = '-1';
-    container.style.overflow = 'hidden';
-    console.log('[AyatCardShare] [2/10] Container created with styles:', {
-      position: container.style.position,
-      width: container.style.width,
-      height: container.style.height,
-      opacity: container.style.opacity,
-    });
-    
-    console.log('[AyatCardShare] [3/10] Appending container to document.body...');
-    document.body.appendChild(container);
-    console.log('[AyatCardShare] [3/10] Container appended. Container in DOM:', !!document.getElementById('ayat-export-container'));
-
-    // Calculate font sizes for full resolution
-    console.log('[AyatCardShare] [4/10] Calculating font sizes...');
-    console.log('[AyatCardShare] [4/10] Arabic text length:', combinedArabicText.length);
-    console.log('[AyatCardShare] [4/10] Translation text length:', combinedTranslation.length);
-    
-    const arabicSize = combinedArabicText.length > 300 ? '42px' : 
-                       combinedArabicText.length > 200 ? '52px' : 
-                       combinedArabicText.length > 100 ? '62px' : '72px';
-    
-    const translationSize = combinedTranslation.length > 250 ? '32px' : 
-                            combinedTranslation.length > 150 ? '38px' : '44px';
-    
-    console.log('[AyatCardShare] [4/10] Calculated sizes - Arabic:', arabicSize, 'Translation:', translationSize);
-
-    // Generate Arabic HTML with circled numbers (sanitized)
-    console.log('[AyatCardShare] [5/10] Generating Arabic HTML with circled numbers...');
-    const arabicHtml = generateArabicWithCircledNumbers();
-    console.log('[AyatCardShare] [5/10] Arabic HTML generated, length:', arabicHtml.length);
-
-    // Sanitize all user-facing content to prevent XSS
-    console.log('[AyatCardShare] [6/10] Sanitizing user content...');
-    const safeSurahName = escapeHtml(surahName);
-    const safeSurahMeaning = surahMeaning ? escapeHtml(surahMeaning) : '';
-    const safeTranslation = escapeHtml(combinedTranslation);
-    const safeAyahRangeText = escapeHtml(ayahRangeText);
-    console.log('[AyatCardShare] [6/10] Content sanitized:', { safeSurahName, safeAyahRangeText });
-
-    // Build HTML string
-    console.log('[AyatCardShare] [7/10] Building HTML content string...');
-    console.log('[AyatCardShare] [7/10] Using theme background:', theme.background);
-    
-    const htmlContent = `
-      <div style="
-        width: 1080px;
-        height: 1920px;
-        background: ${theme.gradient};
-        display: flex;
-        flex-direction: column;
-        padding: 80px 60px;
-        box-sizing: border-box;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-      ">
-        <!-- Top Right Metadata -->
-        <div style="
-          position: absolute;
-          top: 80px;
-          right: 60px;
-          text-align: right;
-        ">
-          <p style="
-            font-size: 28px;
-            font-weight: 600;
-            color: rgba(255,255,255,0.6);
-            margin: 0;
-            letter-spacing: 0.5px;
-          ">${safeSurahName}</p>
-          ${safeSurahMeaning ? `<p style="
-            font-size: 22px;
-            color: rgba(255,255,255,0.5);
-            margin: 8px 0 0 0;
-          ">${safeSurahMeaning}</p>` : ''}
-          <p style="
-            font-size: 22px;
-            color: rgba(255,255,255,0.4);
-            margin: 8px 0 0 0;
-          ">Juz ${juzNumber}</p>
-        </div>
-
-        <!-- Center Content -->
-        <div style="
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          padding-top: 100px;
-        ">
-          <!-- Arabic Text with circled ayah numbers -->
-          <div style="
-            font-family: 'Amiri', serif;
-            font-size: ${arabicSize};
-            line-height: 2.2;
-            color: #FFFFFF;
-            text-align: right;
-            margin: 0 0 48px 0;
-            direction: rtl;
-          ">${arabicHtml}</div>
-
-          <!-- Translation -->
-          <p style="
-            font-size: ${translationSize};
-            font-weight: 600;
-            line-height: 1.6;
-            color: rgba(255,255,255,0.95);
-            text-align: left;
-            margin: 0;
-          ">"${safeTranslation}"</p>
-
-          <!-- Ayah Number -->
-          <p style="
-            font-size: 28px;
-            color: rgba(255,255,255,0.5);
-            margin: 32px 0 0 0;
-            text-align: left;
-          ">${safeAyahRangeText}</p>
-        </div>
-
-        <!-- Bottom Left Branding -->
-        <div style="
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        ">
-          <div style="
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          ">
-            <span style="
-              font-size: 24px;
-              font-weight: 700;
-              color: #FFFFFF;
-              font-family: 'Amiri', serif;
-            ">إ</span>
-          </div>
-          <span style="
-            font-size: 28px;
-            font-weight: 500;
-            color: rgba(255,255,255,0.6);
-          ">Istiqamah</span>
-        </div>
-      </div>
-    `;
-    console.log('[AyatCardShare] [7/10] HTML content built, length:', htmlContent.length);
-
-    // Sanitize the final HTML with DOMPurify
-    console.log('[AyatCardShare] [8/10] Sanitizing HTML with DOMPurify...');
-    const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
-      ADD_TAGS: ['style'],
-      ADD_ATTR: ['style'],
-      ALLOW_DATA_ATTR: false,
-    });
-    container.innerHTML = sanitizedHtml;
-    console.log('[AyatCardShare] [8/10] HTML sanitized and set to container');
-
     try {
-      console.log('[AyatCardShare] [9/10] Finding story element...');
-      const storyEl = container.firstElementChild as HTMLElement | null;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
       
-      if (!storyEl) {
-        console.error('[AyatCardShare] FATAL: story root element not found!');
-        console.error('[AyatCardShare] Container innerHTML length:', container.innerHTML.length);
-        console.error('[AyatCardShare] Container children count:', container.children.length);
-        document.body.removeChild(container);
+      if (!ctx) {
+        console.error('[AyatCardShare] Failed to get canvas 2d context');
         return null;
       }
       
-      console.log('[AyatCardShare] [9/10] Story element found:', {
-        tagName: storyEl.tagName,
-        offsetWidth: storyEl.offsetWidth,
-        offsetHeight: storyEl.offsetHeight,
-        clientWidth: storyEl.clientWidth,
-        clientHeight: storyEl.clientHeight,
+      // Set canvas size for 9:16 aspect ratio (Instagram Story)
+      canvas.width = 1080;
+      canvas.height = 1920;
+      
+      // Parse gradient colors from theme
+      const gradientColors = theme.gradient.match(/#[a-fA-F0-9]{6}/g) || [theme.background, theme.background];
+      
+      // Draw gradient background
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width * 0.3, canvas.height);
+      gradient.addColorStop(0, gradientColors[0] || '#6B8E7D');
+      gradient.addColorStop(0.35, gradientColors[1] || '#2D5A4A');
+      gradient.addColorStop(1, gradientColors[2] || gradientColors[1] || '#1B4332');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Top Right Metadata
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = '600 28px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(surahName, canvas.width - 60, 110);
+      
+      if (surahMeaning) {
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '22px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(surahMeaning, canvas.width - 60, 145);
+      }
+      
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '22px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(`Juz ${juzNumber}`, canvas.width - 60, surahMeaning ? 180 : 145);
+      
+      // Calculate font sizes based on text length
+      const arabicSize = combinedArabicText.length > 300 ? 42 : 
+                         combinedArabicText.length > 200 ? 52 : 
+                         combinedArabicText.length > 100 ? 62 : 72;
+      
+      const translationSize = combinedTranslation.length > 250 ? 32 : 
+                              combinedTranslation.length > 150 ? 38 : 44;
+      
+      // Build Arabic text with ayah numbers
+      const arabicTextWithNumbers = selectedContent
+        .map((a) => {
+          const text = a.text?.trim?.() ?? a.text;
+          const num = a.numberInSurah;
+          return `${text} ﴿${num}﴾`;
+        })
+        .join(' ');
+      
+      // Draw Arabic text (RTL, centered vertically)
+      ctx.textAlign = 'right';
+      ctx.direction = 'rtl';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `${arabicSize}px "Amiri", serif`;
+      
+      // Word wrap Arabic text
+      const maxWidth = canvas.width - 120;
+      const arabicLines = wrapText(ctx, arabicTextWithNumbers, maxWidth);
+      const lineHeight = arabicSize * 2.2;
+      const totalTextHeight = arabicLines.length * lineHeight + translationSize * 2 + 80;
+      let yPosition = (canvas.height - totalTextHeight) / 2 + arabicSize;
+      
+      arabicLines.forEach((line) => {
+        ctx.fillText(line, canvas.width - 60, yPosition);
+        yPosition += lineHeight;
       });
-
-      // Wait for fonts to render, especially Arabic fonts on Android/iOS
-      console.log('[AyatCardShare] [9/10] Waiting 800ms for fonts to render...');
-      await new Promise(resolve => setTimeout(resolve, 800));
-      console.log('[AyatCardShare] [9/10] Font wait complete');
-
-      // Set up timeout warning at 5 seconds
-      console.log('[AyatCardShare] [10/10] Starting toPng with 15s timeout...');
       
-      // Create a promise race between toPng and 15s timeout
-      const timeoutPromise = new Promise<string>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Render timeout'));
-        }, 15000);
+      yPosition += 20; // Gap between Arabic and translation
+      
+      // Draw Translation
+      ctx.textAlign = 'left';
+      ctx.direction = 'ltr';
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.font = `600 ${translationSize}px "Plus Jakarta Sans", sans-serif`;
+      
+      const translationWithQuotes = `"${combinedTranslation}"`;
+      const translationLines = wrapText(ctx, translationWithQuotes, maxWidth);
+      const translationLineHeight = translationSize * 1.6;
+      
+      translationLines.forEach((line) => {
+        ctx.fillText(line, 60, yPosition);
+        yPosition += translationLineHeight;
       });
       
-      const toPngStartTime = Date.now();
-      console.log('[AyatCardShare] [10/10] Calling toPng at:', toPngStartTime);
+      // Draw Ayah Number
+      yPosition += 20;
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '28px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(ayahRangeText, 60, yPosition);
       
-      // Use skipFonts: true to avoid CORS issues with external fonts on iOS
-      // The fonts are already embedded via Google Fonts link, so we don't need html-to-image to fetch them
-      const dataUrl = await Promise.race([
-        toPng(storyEl, {
-          quality: 1,
-          pixelRatio: 1,
-          width: 1080,
-          height: 1920,
-          backgroundColor: theme.background,
-          skipFonts: true, // Skip font embedding to avoid CORS/Load failed errors
-          cacheBust: true, // Prevent caching issues
-          fetchRequestInit: {
-            mode: 'cors',
-            cache: 'no-cache',
-          },
-        }),
-        timeoutPromise,
-      ]);
+      // Bottom Left Branding - Logo box
+      const logoY = canvas.height - 100;
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      roundRect(ctx, 60, logoY - 36, 48, 48, 12);
+      ctx.fill();
       
-      const toPngEndTime = Date.now();
-      const toPngDuration = toPngEndTime - toPngStartTime;
-      console.log('[AyatCardShare] [10/10] toPng completed in:', toPngDuration, 'ms');
+      // Logo text
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '700 24px "Amiri", serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('إ', 84, logoY + 4);
       
-      document.body.removeChild(container);
-      console.log('[AyatCardShare] Container removed from DOM');
-      console.log('[AyatCardShare] PNG dataUrl generated, length:', dataUrl.length);
-      console.log('[AyatCardShare] Total duration:', Date.now() - startTime, 'ms');
+      // Brand name
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = '500 28px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText('Istiqamah', 124, logoY);
+      
+      const dataUrl = canvas.toDataURL('image/png', 1.0);
+      console.log('[AyatCardShare] Canvas rendered successfully in', Date.now() - startTime, 'ms');
       console.log('[AyatCardShare] ========== generateImageDataUrl SUCCESS ==========');
       
       return dataUrl;
     } catch (error) {
       console.error('[AyatCardShare] ========== generateImageDataUrl FAILED ==========');
-      console.error('[AyatCardShare] Error type:', error instanceof Error ? error.constructor.name : typeof error);
-      console.error('[AyatCardShare] Error message:', error instanceof Error ? error.message : String(error));
-      console.error('[AyatCardShare] Time elapsed before error:', Date.now() - startTime, 'ms');
-      
-      // Cleanup
-      try {
-        document.body.removeChild(container);
-        console.log('[AyatCardShare] Container cleaned up after error');
-      } catch {
-        console.warn('[AyatCardShare] Container cleanup failed (may already be removed)');
-      }
-      
+      console.error('[AyatCardShare] Error:', error instanceof Error ? error.message : String(error));
       return null;
     }
-  }, [theme.background, theme.gradient, combinedArabicText, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText, generateArabicWithCircledNumbers]);
+  }, [theme.background, theme.gradient, combinedArabicText, combinedTranslation, surahName, surahMeaning, juzNumber, ayahRangeText, selectedContent]);
+  
+  // Helper function to wrap text
+  const wrapText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    words.forEach((word) => {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    });
+    
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    
+    return lines;
+  };
+  
+  // Helper function to draw rounded rectangle
+  const roundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  };
 
   // Extract base64 from data URL
   const dataUrlToBase64 = (dataUrl: string): string => {
