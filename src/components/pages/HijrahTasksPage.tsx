@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { WeeklyLineChart } from "@/components/WeeklyLineChart";
 import { useTasks, Task, Priority } from "@/hooks/useTasks";
+import { useWeeklyProgress } from "@/hooks/useWeeklyProgress";
 
 const categoryColors = {
   ibadah: { bg: "bg-primary-soft", text: "text-primary" },
@@ -36,6 +37,7 @@ interface HijrahTasksPageProps {
 export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const { language } = useLanguage();
   const { tasks, toggleTask, addTask, deleteTask, completedCount, totalCount, progressValue } = useTasks();
+  const { weeklyData } = useWeeklyProgress();
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -66,9 +68,6 @@ export const HijrahTasksPage = ({ onOpenReflection }: HijrahTasksPageProps) => {
   const filteredTasks = activeFilter === "all"
     ? tasks
     : tasks.filter(task => task.category === activeFilter);
-
-  // Weekly progress starts at 0 for new users, updates based on real activity
-  const weeklyData = [0, 0, 0, 0, 0, 0, Math.round(progressValue)];
 
   return (
     <div className="min-h-screen pb-32 gradient-calm">
