@@ -16,6 +16,20 @@ export interface Task {
 }
 
 const TASKS_STORAGE_KEY = 'istiqamah_tasks';
+const LAST_RESET_DATE_KEY = 'istiqamah_last_reset_date';
+
+// Get today's date in YYYY-MM-DD format (local timezone)
+const getTodayDateString = (): string => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
+
+// Check if a date string is from today
+const isToday = (dateString: string | null | undefined): boolean => {
+  if (!dateString) return false;
+  const taskDate = new Date(dateString).toISOString().split('T')[0];
+  return taskDate === getTodayDateString();
+};
 
 // Default tasks for new users
 const defaultTasks: Omit<Task, 'id'>[] = [
@@ -43,22 +57,48 @@ const sortTasks = (taskList: Task[]): Task[] => {
   });
 };
 
+// Reset tasks that were completed on a previous day
+const resetTasksForNewDay = (taskList: Task[]): Task[] => {
+  return taskList.map(task => {
+    // If task is completed but not today, reset it
+    if (task.completed && !isToday(task.completedAt)) {
+      return { ...task, completed: false, completedAt: null };
+    }
+    return task;
+  });
+};
+
 // Local storage fallback for non-authenticated users
 const loadLocalTasks = (): Task[] => {
   try {
     const stored = localStorage.getItem(TASKS_STORAGE_KEY);
+    const lastResetDate = localStorage.getItem(LAST_RESET_DATE_KEY);
+    const today = getTodayDateString();
+    
     if (stored) {
-      return JSON.parse(stored);
+      let tasks: Task[] = JSON.parse(stored);
+      
+      // Check if we need to reset for a new day
+      if (lastResetDate !== today) {
+        tasks = resetTasksForNewDay(tasks);
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
+        localStorage.setItem(LAST_RESET_DATE_KEY, today);
+      }
+      
+      return tasks;
     }
   } catch (e) {
     console.error('Error loading tasks:', e);
   }
+  
+  localStorage.setItem(LAST_RESET_DATE_KEY, getTodayDateString());
   return defaultTasks.map((t, i) => ({ ...t, id: (i + 1).toString() }));
 };
 
 const saveLocalTasks = (tasks: Task[]) => {
   try {
     localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
+    localStorage.setItem(LAST_RESET_DATE_KEY, getTodayDateString());
     window.dispatchEvent(new Event('tasks-updated'));
   } catch (e) {
     console.error('Error saving tasks:', e);
@@ -89,7 +129,7 @@ export const useTasks = () => {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const mappedTasks: Task[] = data.map(t => ({
+        let mappedTasks: Task[] = data.map(t => ({
           id: t.id,
           title: t.title,
           completed: t.completed,
@@ -98,6 +138,27 @@ export const useTasks = () => {
           isCustom: t.is_custom,
           completedAt: t.completed_at,
         }));
+        
+        // Reset tasks completed on previous days
+        const tasksToReset = mappedTasks.filter(t => t.completed && !isToday(t.completedAt));
+        
+        if (tasksToReset.length > 0) {
+          // Update database for tasks that need reset
+          const resetPromises = tasksToReset.map(t =>
+            supabase
+              .from('user_tasks')
+              .update({ completed: false, completed_at: null })
+              .eq('id', t.id)
+              .eq('user_id', user.id)
+          );
+          
+          await Promise.all(resetPromises);
+          
+          // Apply reset to local state
+          mappedTasks = resetTasksForNewDay(mappedTasks);
+          console.log(`Daily reset: ${tasksToReset.length} tasks reset for new day`);
+        }
+        
         setTasks(sortTasks(mappedTasks));
       } else {
         // Initialize default tasks for new users
